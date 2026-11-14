@@ -4,7 +4,7 @@ export default function Shell({ children }) {
   return (
     <div className="flex h-screen bg-[var(--c-fondo)] text-[var(--c-texto)]">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      <main className="flex-1 min-w-0 overflow-y-auto px-5 py-6">{children}</main>
     </div>
   );
 }

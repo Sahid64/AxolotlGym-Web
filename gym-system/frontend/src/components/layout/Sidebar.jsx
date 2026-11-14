@@ -44,9 +44,9 @@ export default function Sidebar() {
   return (
     <>
       <div className="flex h-full shrink-0 overflow-hidden">
-        <aside className="w-64 h-full bg-[var(--c-barra)] flex flex-col justify-between overflow-hidden">
+        <aside className="w-56 h-full bg-[var(--c-barra)] flex flex-col justify-between overflow-hidden">
           {/* Encabezado compacto: logo, nombre y rol */}
-          <div className="shrink-0 px-5 pt-4 pb-3 flex flex-col items-center text-center">
+          <div className="shrink-0 px-4 pt-4 pb-3 flex flex-col items-center text-center">
             <img src="/logo_final.png" alt="Axolotl" className="w-20 h-20 object-contain" />
             <p className="mt-2 text-base font-bold tracking-[0.3em] text-[var(--c-texto)]">AXOLOTL</p>
             <span className="mt-1.5 px-3.5 py-0.5 rounded-full border border-[var(--c-acento)] bg-[var(--c-acento-15)] text-xs font-bold text-[var(--c-acento)]">

@@ -6,11 +6,11 @@ export default function Table({ columnas, filas, vacio }) {
   const textoVacio = vacio ?? tr.sinResultados;
   return (
     <div className="overflow-x-auto bg-[var(--c-tarjeta)] border border-[var(--c-borde)] rounded-lg">
-      <table className="min-w-full text-sm text-[var(--c-texto)]">
+      <table className="w-full text-[13px] text-[var(--c-texto)]">
         <thead>
           <tr className="border-b border-[var(--c-borde-suave)] text-center text-[var(--c-acento)]">
             {columnas.map((col) => (
-              <th key={col.key} className="px-4 py-3 font-medium text-center align-middle">
+              <th key={col.key} className="px-2.5 py-2.5 font-medium text-center align-middle whitespace-nowrap">
                 {col.label}
               </th>
             ))}
@@ -19,7 +19,7 @@ export default function Table({ columnas, filas, vacio }) {
         <tbody>
           {filas.length === 0 && (
             <tr>
-              <td colSpan={columnas.length} className="px-4 py-8 text-center text-[var(--c-texto-tenue)]">
+              <td colSpan={columnas.length} className="px-2.5 py-8 text-center text-[var(--c-texto-tenue)]">
                 {textoVacio}
               </td>
             </tr>
@@ -27,7 +27,7 @@ export default function Table({ columnas, filas, vacio }) {
           {filas.map((fila, i) => (
             <tr key={fila.id ?? i} className="border-b border-[var(--c-borde-30)] last:border-0 hover:bg-[var(--c-borde-20)]">
               {columnas.map((col) => (
-                <td key={col.key} className="px-4 py-3 text-center align-middle">
+                <td key={col.key} className="px-2.5 py-2.5 text-center align-middle">
                   {col.render ? col.render(fila) : fila[col.key]}
                 </td>
               ))}

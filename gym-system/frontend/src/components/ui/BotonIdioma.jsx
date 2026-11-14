@@ -1,7 +1,7 @@
 import { useIdioma } from "../../context/IdiomaContext.jsx";
 
 export default function BotonIdioma({ className = "" }) {
-  const { idioma, alternarIdioma, tr } = useIdioma();
+  const { alternarIdioma, tr } = useIdioma();
 
   return (
     <button
@@ -9,7 +9,7 @@ export default function BotonIdioma({ className = "" }) {
       onClick={alternarIdioma}
       aria-label={tr.etiquetaIdioma}
       title={tr.etiquetaIdioma}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--c-borde)] bg-[var(--c-tarjeta)] text-xs font-bold text-[var(--c-texto)] hover:border-[var(--c-acento)] hover:bg-[var(--c-borde-20)] transition-colors ${className}`}
+      className={`flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg border border-[var(--c-borde)] bg-[var(--c-tarjeta)] text-xs font-medium text-[var(--c-texto)] hover:border-[var(--c-acento)] hover:bg-[var(--c-borde-20)] transition-colors ${className}`}
     >
       <svg
         width="16"
@@ -30,9 +30,6 @@ export default function BotonIdioma({ className = "" }) {
         <path d="M14 18h6" />
       </svg>
       <span>{tr.etiquetaIdioma}</span>
-      <span className="px-1.5 py-0.5 rounded-full border border-[var(--c-acento)] bg-[var(--c-acento-15)] text-[10px] font-bold text-[var(--c-acento)]">
-        {idioma === "es" ? "ES" : "EN"}
-      </span>
     </button>
   );
 }

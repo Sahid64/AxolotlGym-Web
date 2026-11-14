@@ -143,14 +143,14 @@ export default function AccesoFacial() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* ---------- Camara ---------- */}
         <div className={tarjeta}>
-          <p className="text-sm font-medium text-[var(--c-texto)] mb-4">{t.subtitulo}</p>
+          <p className="text-sm font-medium text-center text-[var(--c-texto)] mb-4">{t.subtitulo}</p>
           <CamaraFacial muestrasNecesarias={3} modo="continuo" onRostro={alReconocer} />
         </div>
 
         <div className="space-y-6">
           {/* ---------- Ultimo registro ---------- */}
           <div className={tarjeta}>
-            <p className="text-sm font-medium text-[var(--c-texto)]">{t.ultimoRegistro}</p>
+            <p className="text-sm font-medium text-center text-[var(--c-texto)]">{t.ultimoRegistro}</p>
             <div className="my-4 h-px bg-[var(--c-borde-suave)]" />
 
             {aviso && (
@@ -163,7 +163,7 @@ export default function AccesoFacial() {
               <p className="text-sm text-[var(--c-texto-tenue)] text-center py-6">{t.instruccion}</p>
             ) : (
               <>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center text-center gap-3">
                   {fotos[c.id] ? (
                     <img
                       src={fotos[c.id]}
@@ -178,7 +178,7 @@ export default function AccesoFacial() {
                   <div className="min-w-0">
                     <p className="text-lg font-bold text-[var(--c-texto)] truncate">{c.nombre}</p>
                     <p className="text-sm text-[var(--c-texto-sec)] mt-1">{t.membresia}: {c.numMembresia}</p>
-                    <p className="text-sm text-[var(--c-texto-sec)] mt-1 flex items-center gap-2">
+                    <p className="text-sm text-[var(--c-texto-sec)] mt-1 flex items-center justify-center gap-2">
                       {t.estado}: <Badge estado={c.estado} />
                     </p>
                     {ultimo.fechaHora && (
@@ -190,7 +190,7 @@ export default function AccesoFacial() {
                 </div>
 
                 <div className="my-4 h-px bg-[var(--c-borde-suave)]" />
-                <p className="text-xs text-[var(--c-texto-tenue)] mb-2">{t.correccionManual}</p>
+                <p className="text-xs text-center text-[var(--c-texto-tenue)] mb-2">{t.correccionManual}</p>
                 <div className="flex gap-3">
                   <Boton variante="exito" className="flex-1" onClick={() => registrarManual("entrada")}>
                     {t.entrada}
@@ -242,8 +242,9 @@ export default function AccesoFacial() {
                         </div>
                       </div>
                       <Boton
+                        tamano="sm"
                         variante="peligro"
-                        className="shrink-0 text-xs"
+                        className="shrink-0"
                         onClick={() => setClienteASacar(p)}
                       >
                         {t.sacarManualBtn}

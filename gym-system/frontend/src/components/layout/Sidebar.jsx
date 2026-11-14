@@ -100,9 +100,6 @@ export default function Sidebar() {
                 <path d="M14 18h6" />
               </svg>
               <span>{tr.etiquetaIdioma}</span>
-              <span className="px-2 py-0.5 rounded-full border border-[var(--c-acento)] bg-[var(--c-acento-15)] text-[10px] font-bold text-[var(--c-acento)]">
-                {idioma === "es" ? "ES" : "EN"}
-              </span>
             </button>
           </nav>
 

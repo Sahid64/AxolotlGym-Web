@@ -45,11 +45,11 @@ export default function Solicitudes() {
       label: tr.acciones,
       render: (f) =>
         f.estado === "pendiente" ? (
-          <div className="flex items-center justify-center gap-2">
-            <Boton variante="exito" onClick={() => setConfirmando({ solicitud: f, accion: "aprobar" })}>
+          <div className="flex items-center justify-center gap-1.5 flex-nowrap">
+            <Boton tamano="sm" variante="exito" onClick={() => setConfirmando({ solicitud: f, accion: "aprobar" })}>
               {tr.solicitudes.aprobar}
             </Boton>
-            <Boton variante="peligro" onClick={() => setConfirmando({ solicitud: f, accion: "rechazar" })}>
+            <Boton tamano="sm" variante="peligro" onClick={() => setConfirmando({ solicitud: f, accion: "rechazar" })}>
               {tr.solicitudes.rechazar}
             </Boton>
           </div>

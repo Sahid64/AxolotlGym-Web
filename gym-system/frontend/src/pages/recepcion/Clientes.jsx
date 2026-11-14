@@ -403,32 +403,32 @@ export default function Clientes() {
         <div className="flex items-center justify-center gap-1.5 flex-nowrap">
           {f.estado === "activo" ? (
             <>
-              <Boton variante="outline" className="!px-2.5 !py-1 text-xs" onClick={() => abrirEditar(f)}>
+              <Boton tamano="sm" variante="outline" onClick={() => abrirEditar(f)}>
                 {tr.editar}
               </Boton>
-              <Boton variante="outline" className="!px-2.5 !py-1 text-xs" onClick={() => abrirRostro(f)}>
+              <Boton tamano="sm" variante="outline" onClick={() => abrirRostro(f)}>
                 {conRostro.has(f.id) ? tr.facial.actualizarRostro : tr.facial.registrarRostro}
               </Boton>
               {esEncargado ? (
-                <Boton variante="peligro" className="!px-2.5 !py-1 text-xs" onClick={() => abrirModalBaja(f)}>
+                <Boton tamano="sm" variante="peligro" onClick={() => abrirModalBaja(f)}>
                   {tr.darDeBaja}
                 </Boton>
               ) : (
-                <Boton variante="peligro" className="!px-2.5 !py-1 text-xs" onClick={() => setClienteADesactivar(f)}>
+                <Boton tamano="sm" variante="peligro" onClick={() => setClienteADesactivar(f)}>
                   {tr.desactivar}
                 </Boton>
               )}
             </>
           ) : (
             <>
-              <Boton variante="outline" className="!px-2.5 !py-1 text-xs" onClick={() => abrirModalRenovar(f)}>
+              <Boton tamano="sm" variante="outline" onClick={() => abrirModalRenovar(f)}>
                 {tr.renovar}
               </Boton>
-              <Boton variante="outline" className="!px-2.5 !py-1 text-xs" onClick={() => abrirRostro(f)}>
+              <Boton tamano="sm" variante="outline" onClick={() => abrirRostro(f)}>
                 {conRostro.has(f.id) ? tr.facial.actualizarRostro : tr.facial.registrarRostro}
               </Boton>
               {esEncargado && (
-                <Boton variante="peligro" className="!px-2.5 !py-1 text-xs" onClick={() => abrirModalBaja(f)}>
+                <Boton tamano="sm" variante="peligro" onClick={() => abrirModalBaja(f)}>
                   {tr.darDeBaja}
                 </Boton>
               )}

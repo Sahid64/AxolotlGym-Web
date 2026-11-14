@@ -7,8 +7,14 @@ import Modal from "../ui/Modal.jsx";
 const dinero = (n) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n || 0);
 
-const fechaApp = (iso) =>
-  iso ? new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+const fechaApp = (iso, esIngles = false) =>
+  iso
+    ? new Date(iso).toLocaleDateString(esIngles ? "en-US" : "es-MX", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "—";
 
 /**
  * Pagos pendientes de validar (equivale a PagosScreen de la app en Kotlin).
@@ -17,7 +23,7 @@ const fechaApp = (iso) =>
  *   no sean transferencia (igual que confirmar_pago en la BD).
  */
 export default function PagosPendientes({ puedeVerComprobante = false }) {
-  const { tr, traducirMsg, traducirPlan } = useIdioma();
+  const { tr, esIngles, traducirMsg, traducirPlan } = useIdioma();
   const [pagos, setPagos] = useState([]);
   const [imagenes, setImagenes] = useState({}); // id -> dataURI | null
   const [cargando, setCargando] = useState(true);
@@ -100,6 +106,7 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
             key={pago.id}
             pago={pago}
             tr={tr}
+            esIngles={esIngles}
             traducirPlan={traducirPlan}
             mostrarImagen={puedeVerComprobante}
             imagen={imagenes[pago.id]}
@@ -180,11 +187,11 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
 
 /** Tarjeta con: cliente, plan, monto, método, comprobante y botones. */
 function PagoCard({
-  pago, tr, traducirPlan, mostrarImagen, imagen, cargandoImagen, habilitado, soloEncargado,
+  pago, tr, esIngles, traducirPlan, mostrarImagen, imagen, cargandoImagen, habilitado, soloEncargado,
   onAmpliar, onAceptar, onRechazar,
 }) {
   return (
-    <div className="bg-[var(--c-tarjeta)] border border-[var(--c-borde)] rounded-2xl p-4 flex flex-col text-center">
+    <div className="bg-[var(--c-tarjeta)] border border-[var(--c-borde)] rounded-lg p-5 flex flex-col text-center">
       <p className="text-lg font-bold text-[var(--c-texto)]">{pago.cliente}</p>
       {pago.numMembresia && <p className="text-xs text-[var(--c-texto-sec)]">{pago.numMembresia}</p>}
 
@@ -192,7 +199,7 @@ function PagoCard({
         {tr.pagos.planLabel}: {traducirPlan(pago.plan) || "—"} · {dinero(pago.monto)}
       </p>
       <p className="text-xs text-[var(--c-texto-sec)]">
-        {tr.clientes?.metodos?.[pago.metodo] || pago.metodo} · {tr.pagos.enviadoEl} {fechaApp(pago.fecha)}
+        {tr.clientes?.metodos?.[pago.metodo] || pago.metodo} · {tr.pagos.enviadoEl} {fechaApp(pago.fecha, esIngles)}
       </p>
 
       {/* Comprobante (la imagen solo la ve el Encargado) */}

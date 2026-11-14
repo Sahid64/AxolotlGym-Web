@@ -153,9 +153,9 @@ export default function Servicios() {
       key: "acciones",
       label: tr.acciones,
       render: (f) => (
-        <div className="flex items-center justify-center gap-2">
-          <Boton variante="outline" onClick={() => abrirEditar(f)}>{tr.editar}</Boton>
-          <Boton variante="peligro" onClick={() => setServicioAEliminar(f)}>{tr.eliminar}</Boton>
+        <div className="flex items-center justify-center gap-1.5 flex-nowrap">
+          <Boton tamano="sm" variante="outline" onClick={() => abrirEditar(f)}>{tr.editar}</Boton>
+          <Boton tamano="sm" variante="peligro" onClick={() => setServicioAEliminar(f)}>{tr.eliminar}</Boton>
         </div>
       ),
     },

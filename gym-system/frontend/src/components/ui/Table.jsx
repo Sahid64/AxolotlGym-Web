@@ -8,9 +8,11 @@ export default function Table({ columnas, filas, vacio }) {
     <div className="overflow-x-auto bg-[var(--c-tarjeta)] border border-[var(--c-borde)] rounded-lg">
       <table className="min-w-full text-sm text-[var(--c-texto)]">
         <thead>
-          <tr className="border-b border-[var(--c-borde-suave)] text-left text-[var(--c-acento)]">
+          <tr className="border-b border-[var(--c-borde-suave)] text-center text-[var(--c-acento)]">
             {columnas.map((col) => (
-              <th key={col.key} className="px-4 py-3 font-medium">{col.label}</th>
+              <th key={col.key} className="px-4 py-3 font-medium text-center align-middle">
+                {col.label}
+              </th>
             ))}
           </tr>
         </thead>
@@ -25,7 +27,7 @@ export default function Table({ columnas, filas, vacio }) {
           {filas.map((fila, i) => (
             <tr key={fila.id ?? i} className="border-b border-[var(--c-borde-30)] last:border-0 hover:bg-[var(--c-borde-20)]">
               {columnas.map((col) => (
-                <td key={col.key} className="px-4 py-3">
+                <td key={col.key} className="px-4 py-3 text-center align-middle">
                   {col.render ? col.render(fila) : fila[col.key]}
                 </td>
               ))}

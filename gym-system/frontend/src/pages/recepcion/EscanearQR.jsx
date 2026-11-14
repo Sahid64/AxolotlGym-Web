@@ -138,7 +138,7 @@ export default function EscanearQR() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* ---------- Camara ---------- */}
         <div className={tarjeta}>
-          <p className="text-sm font-medium text-[var(--c-texto)] mb-4">{tr.qr.escanearCodigo}</p>
+          <p className="text-sm font-medium text-center text-[var(--c-texto)] mb-4">{tr.qr.escanearCodigo}</p>
 
           <div className="relative aspect-square rounded-lg overflow-hidden bg-[var(--c-campo)] mb-4">
             <div
@@ -179,7 +179,7 @@ export default function EscanearQR() {
 
         {/* ---------- Informacion del cliente ---------- */}
         <div className={tarjeta}>
-          <p className="text-sm font-medium text-[var(--c-texto)]">{tr.qr.infoCliente}</p>
+          <p className="text-sm font-medium text-center text-[var(--c-texto)]">{tr.qr.infoCliente}</p>
           <div className="my-4 h-px bg-[var(--c-borde-suave)]" />
 
           {!cliente ? (
@@ -187,14 +187,14 @@ export default function EscanearQR() {
               {tr.qr.instruccionEscaneo}
             </p>
           ) : (
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col items-center text-center gap-3 py-2">
               <div className="w-[72px] h-[72px] shrink-0 rounded-full border-2 border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-3xl font-bold text-[var(--c-acento)]">
                 {inicial}
               </div>
               <div className="min-w-0">
                 <p className="text-lg font-bold text-[var(--c-texto)] truncate">{cliente.nombre}</p>
                 <p className="text-sm text-[var(--c-texto-sec)] mt-1">{tr.qr.membresia}: {cliente.numMembresia}</p>
-                <p className="text-sm text-[var(--c-texto-sec)] mt-1 flex items-center gap-2">
+                <p className="text-sm text-[var(--c-texto-sec)] mt-1 flex items-center justify-center gap-2">
                   {tr.qr.estado}: <Badge estado={cliente.estado} />
                 </p>
                 {cliente.fechaRegistro && (

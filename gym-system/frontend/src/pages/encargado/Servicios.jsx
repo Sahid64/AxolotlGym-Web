@@ -132,7 +132,7 @@ export default function Servicios() {
       key: "acciones",
       label: tr.acciones,
       render: (f) => (
-        <div className="flex gap-2">
+        <div className="flex items-center justify-center gap-2">
           <Boton variante="outline" onClick={() => abrirEditar(f)}>{tr.editar}</Boton>
           <Boton variante="peligro" onClick={() => eliminar(f.id)}>{tr.eliminar}</Boton>
         </div>
@@ -143,7 +143,7 @@ export default function Servicios() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-[var(--c-texto)] mb-6">{tr.servicios.titulo}</h1>
+        <h1 className="text-xl font-semibold text-[var(--c-texto)]">{tr.servicios.titulo}</h1>
         <Boton onClick={abrirNuevo}>{tr.servicios.nuevoBtn}</Boton>
       </div>
 

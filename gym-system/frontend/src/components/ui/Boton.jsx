@@ -8,7 +8,7 @@ export default function Boton({ children, variante = "primary", className = "", 
   };
   return (
     <button
-      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 ${variantes[variante]} ${className}`}
+      className={`inline-flex items-center justify-center text-center px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 ${variantes[variante]} ${className}`}
       {...props}
     >
       {children}

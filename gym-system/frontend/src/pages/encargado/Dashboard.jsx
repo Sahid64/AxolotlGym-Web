@@ -56,7 +56,7 @@ export default function Dashboard() {
       </div>
 
       <div className={`${tarjeta} mb-6`}>
-        <p className="text-sm font-medium text-[var(--c-texto)] mb-4">{tr.dashboard.ocupacionHora}</p>
+        <p className="text-sm font-medium text-center text-[var(--c-texto)] mb-4">{tr.dashboard.ocupacionHora}</p>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={ocupacion}>
             <CartesianGrid strokeDasharray="3 3" stroke={rejilla} />
@@ -78,7 +78,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className={tarjeta}>
-          <p className="text-sm font-medium text-[var(--c-texto)] mb-4">{tr.dashboard.clientes12Meses}</p>
+          <p className="text-sm font-medium text-center text-[var(--c-texto)] mb-4">{tr.dashboard.clientes12Meses}</p>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={porMesTraducido}>
               <CartesianGrid strokeDasharray="3 3" stroke={rejilla} />
@@ -93,7 +93,7 @@ export default function Dashboard() {
         </div>
 
         <div className={tarjeta}>
-          <p className="text-sm font-medium text-[var(--c-texto)] mb-4">{tr.dashboard.entradasDia}</p>
+          <p className="text-sm font-medium text-center text-[var(--c-texto)] mb-4">{tr.dashboard.entradasDia}</p>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={porDiaTraducido}>
               <CartesianGrid strokeDasharray="3 3" stroke={rejilla} />

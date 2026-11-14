@@ -7,7 +7,7 @@ export default function StatCard({ titulo, valor, acento = "primary" }) {
   };
   return (
     <div
-      className={`bg-[var(--c-tarjeta)] rounded-lg border border-[var(--c-borde)] border-l-4 p-4 ${acentos[acento] || acentos.primary}`}
+      className={`bg-[var(--c-tarjeta)] rounded-lg border border-[var(--c-borde)] border-l-4 p-4 text-center ${acentos[acento] || acentos.primary}`}
     >
       <p className="text-sm text-[var(--c-texto-sec)]">{titulo}</p>
       <p className="text-2xl font-semibold mt-1">{valor}</p>

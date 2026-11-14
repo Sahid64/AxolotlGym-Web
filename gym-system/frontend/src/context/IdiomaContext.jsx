@@ -15,7 +15,9 @@ const textos = {
     eliminar: "Eliminar",
     renovar: "Renovar",
     guardarCambios: "Guardar cambios",
+    cancelar: "Cancelar",
     todos: "Todos",
+    volverLogin: "← Volver al inicio de sesión",
 
     // Estados y Roles
     estados: {
@@ -46,9 +48,24 @@ const textos = {
       ingresar: "Ingresar",
       soloStaff: "Este acceso web es solo para recepción y encargado/dueño",
       errorDefault: "No se pudo iniciar sesión",
+      acepto: "Acepto los",
+      terminosLink: "Términos y Condiciones",
+      yLas: "y las",
+      privacidadLink: "Políticas de Privacidad",
+      errorTerminos: "Debes aceptar los Términos y Condiciones y las Políticas de Privacidad para ingresar",
     },
 
-    // Sidebar
+    // Páginas legales (Términos y Privacidad)
+    legal: {
+      terminosTitulo: "Términos y Condiciones",
+      terminosSubtitulo: "AXOLOTL GYM — Condiciones de uso del sistema",
+      terminosPendiente: "Apartado listo para ingresar los Términos y Condiciones de Axolotl Gym.",
+      privacidadTitulo: "Políticas de Privacidad",
+      privacidadSubtitulo: "AXOLOTL GYM — Protección y tratamiento de datos personales",
+      privacidadPendiente: "Apartado listo para ingresar las Políticas de Privacidad de Axolotl Gym.",
+    },
+
+    // Sidebar y Confirmación de Cierre de Sesión
     menu: {
       accesoFacial: "Reconocimiento facial",
       clientes: "Clientes",
@@ -59,6 +76,9 @@ const textos = {
       gastos: "Gastos",
       reportes: "Reportes",
       cerrarSesion: "Cerrar sesión",
+      confirmarSalidaTitulo: "Confirmar cierre de sesión",
+      confirmarSalidaMsg: "¿Estás seguro de que deseas cerrar tu sesión actual?",
+      confirmarSalidaBtn: "Sí, cerrar sesión",
     },
 
     // Reconocimiento facial (toma de lista)
@@ -273,7 +293,9 @@ const textos = {
     eliminar: "Delete",
     renovar: "Renew",
     guardarCambios: "Save changes",
+    cancelar: "Cancel",
     todos: "All",
+    volverLogin: "← Back to sign in",
 
     // Statuses and Roles
     estados: {
@@ -304,9 +326,24 @@ const textos = {
       ingresar: "Sign in",
       soloStaff: "This web access is only for reception and manager/owner",
       errorDefault: "Could not sign in",
+      acepto: "I accept the",
+      terminosLink: "Terms and Conditions",
+      yLas: "and the",
+      privacidadLink: "Privacy Policy",
+      errorTerminos: "You must accept the Terms and Conditions and Privacy Policy to sign in",
     },
 
-    // Sidebar
+    // Legal pages (Terms & Privacy)
+    legal: {
+      terminosTitulo: "Terms and Conditions",
+      terminosSubtitulo: "AXOLOTL GYM — System terms of use",
+      terminosPendiente: "Section ready to insert Axolotl Gym's Terms and Conditions.",
+      privacidadTitulo: "Privacy Policy",
+      privacidadSubtitulo: "AXOLOTL GYM — Personal data protection and processing",
+      privacidadPendiente: "Section ready to insert Axolotl Gym's Privacy Policy.",
+    },
+
+    // Sidebar & Logout confirmation
     menu: {
       accesoFacial: "Face recognition",
       clientes: "Clients",
@@ -317,6 +354,9 @@ const textos = {
       gastos: "Expenses",
       reportes: "Reports",
       cerrarSesion: "Sign out",
+      confirmarSalidaTitulo: "Confirm sign out",
+      confirmarSalidaMsg: "Are you sure you want to sign out of your current session?",
+      confirmarSalidaBtn: "Yes, sign out",
     },
 
     // Face recognition (attendance)

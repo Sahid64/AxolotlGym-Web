@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useIdioma } from "../context/IdiomaContext.jsx";
 import Input from "../components/ui/Input.jsx";
@@ -11,6 +11,7 @@ import FondoGym from "../components/ui/FondoGym.jsx";
 export default function Login() {
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
   const { login } = useAuth();
@@ -20,6 +21,10 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    if (!aceptaTerminos) {
+      setError(tr.login.errorTerminos);
+      return;
+    }
     setCargando(true);
     try {
       const usuario = await login(correo, password);
@@ -42,7 +47,7 @@ export default function Login() {
       {/* Tarjeta de cristal con borde dorado giratorio */}
       <div className="fx-borde relative z-10 w-full max-w-sm">
         <div className="fx-cristal rounded-[calc(1rem-1.5px)] p-8">
-          <div className="flex flex-col items-center mb-6">
+          <div className="flex flex-col items-center text-center mb-6">
             <img
               src="/logo_final.png"
               alt="Axolotl"
@@ -56,8 +61,39 @@ export default function Login() {
           <form onSubmit={handleSubmit}>
             <Input label={tr.login.correo} type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required />
             <Input label={tr.login.password} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            {error && <p className="text-sm text-[var(--c-rojo)] mb-3">{error}</p>}
-            <Boton type="submit" className="w-full mt-2" disabled={cargando}>
+
+            {/* Casilla de aceptación de Términos y Condiciones y Políticas de Privacidad */}
+            <div className="mt-3 mb-4 flex items-start gap-2.5">
+              <input
+                id="acepta-terminos"
+                type="checkbox"
+                checked={aceptaTerminos}
+                onChange={(e) => {
+                  setAceptaTerminos(e.target.checked);
+                  if (e.target.checked && error === tr.login.errorTerminos) setError("");
+                }}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-[var(--c-borde)] accent-[var(--c-acento)]"
+              />
+              <label htmlFor="acepta-terminos" className="text-xs leading-relaxed text-[var(--c-texto-sec)] select-none">
+                {tr.login.acepto}{" "}
+                <Link
+                  to="/terminos"
+                  className="font-semibold text-[var(--c-acento-texto)] underline hover:text-[var(--c-acento)]"
+                >
+                  {tr.login.terminosLink}
+                </Link>{" "}
+                {tr.login.yLas}{" "}
+                <Link
+                  to="/privacidad"
+                  className="font-semibold text-[var(--c-acento-texto)] underline hover:text-[var(--c-acento)]"
+                >
+                  {tr.login.privacidadLink}
+                </Link>
+              </label>
+            </div>
+
+            {error && <p className="text-xs text-center text-[var(--c-rojo)] mb-3">{error}</p>}
+            <Boton type="submit" className="w-full mt-1" disabled={cargando || !aceptaTerminos}>
               {cargando ? tr.login.ingresando : tr.login.ingresar}
             </Boton>
           </form>

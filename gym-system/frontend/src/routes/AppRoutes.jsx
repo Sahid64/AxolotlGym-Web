@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "../pages/Login.jsx";
 import Inicio from "../pages/Inicio.jsx";
+import Terminos from "../pages/Terminos.jsx";
+import Privacidad from "../pages/Privacidad.jsx";
 
 import RutaProtegida from "../components/layout/RutaProtegida.jsx";
 
@@ -9,7 +11,6 @@ import RutaProtegida from "../components/layout/RutaProtegida.jsx";
 import EscanearQR from "../pages/recepcion/EscanearQR.jsx";
 import Clientes from "../pages/recepcion/Clientes.jsx";
 import Solicitudes from "../pages/recepcion/Solicitudes.jsx";
-import PagosRecepcion from "../pages/recepcion/Pagos.jsx";
 
 // Encargado / Dueño
 import Dashboard from "../pages/encargado/Dashboard.jsx";
@@ -17,7 +18,6 @@ import Personal from "../pages/encargado/Personal.jsx"; // recepcion, instructor
 import Servicios from "../pages/encargado/Servicios.jsx";
 import Gastos from "../pages/encargado/Gastos.jsx";
 import Reportes from "../pages/encargado/Reportes.jsx";
-import PagosEncargado from "../pages/encargado/Pagos.jsx";
 
 export default function AppRoutes() {
   return (
@@ -25,8 +25,10 @@ export default function AppRoutes() {
       {/* Página publicitaria */}
       <Route path="/" element={<Inicio />} />
 
-      {/* Login */}
+      {/* Login y Páginas Legales */}
       <Route path="/login" element={<Login />} />
+      <Route path="/terminos" element={<Terminos />} />
+      <Route path="/privacidad" element={<Privacidad />} />
 
       {/* Recepcion */}
       <Route
@@ -52,15 +54,6 @@ export default function AppRoutes() {
         element={
           <RutaProtegida rolesPermitidos={["recepcion"]}>
             <Solicitudes />
-          </RutaProtegida>
-        }
-      />
-
-      <Route
-        path="/recepcion/pagos"
-        element={
-          <RutaProtegida rolesPermitidos={["recepcion"]}>
-            <PagosRecepcion />
           </RutaProtegida>
         }
       />
@@ -107,15 +100,6 @@ export default function AppRoutes() {
         element={
           <RutaProtegida rolesPermitidos={["encargado", "dueno"]}>
             <Gastos />
-          </RutaProtegida>
-        }
-      />
-
-      <Route
-        path="/encargado/pagos"
-        element={
-          <RutaProtegida rolesPermitidos={["encargado", "dueno"]}>
-            <PagosEncargado />
           </RutaProtegida>
         }
       />

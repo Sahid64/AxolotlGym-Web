@@ -39,7 +39,7 @@ export default function Solicitudes() {
       label: tr.acciones,
       render: (f) =>
         f.estado === "pendiente" ? (
-          <div className="flex gap-2">
+          <div className="flex items-center justify-center gap-2">
             <Boton variante="exito" onClick={() => aprobar(f.id)}>{tr.solicitudes.aprobar}</Boton>
             <Boton variante="peligro" onClick={() => rechazar(f.id)}>{tr.solicitudes.rechazar}</Boton>
           </div>

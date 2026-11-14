@@ -7,9 +7,9 @@ export default function BotonIdioma({ className = "" }) {
     <button
       type="button"
       onClick={alternarIdioma}
-      aria-label={tr.cambiarIdioma}
-      title={tr.cambiarIdioma}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--c-borde)] bg-[var(--c-tarjeta)] text-xs font-bold text-[var(--c-texto)] hover:border-[var(--c-acento)] hover:bg-[var(--c-borde-20)] transition-colors ${className}`}
+      aria-label={tr.etiquetaIdioma}
+      title={tr.etiquetaIdioma}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--c-borde)] bg-[var(--c-tarjeta)] text-xs font-bold text-[var(--c-texto)] hover:border-[var(--c-acento)] hover:bg-[var(--c-borde-20)] transition-colors ${className}`}
     >
       <svg
         width="16"
@@ -20,13 +20,19 @@ export default function BotonIdioma({ className = "" }) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="text-[var(--c-acento)]"
+        className="shrink-0 text-[var(--c-acento)]"
       >
-        <circle cx="12" cy="12" r="10" />
-        <path d="M2 12h20" />
-        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        <path d="m5 8 6 6" />
+        <path d="m4 14 6-6 2-3" />
+        <path d="M2 5h12" />
+        <path d="M7 2h1" />
+        <path d="m22 22-5-10-5 10" />
+        <path d="M14 18h6" />
       </svg>
-      <span>{idioma === "es" ? "ES / EN" : "EN / ES"}</span>
+      <span>{tr.etiquetaIdioma}</span>
+      <span className="px-1.5 py-0.5 rounded-full border border-[var(--c-acento)] bg-[var(--c-acento-15)] text-[10px] font-bold text-[var(--c-acento)]">
+        {idioma === "es" ? "ES" : "EN"}
+      </span>
     </button>
   );
 }

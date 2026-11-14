@@ -58,9 +58,9 @@ export default function Dashboard() {
       <div className={`${tarjeta} mb-6`}>
         <p className="text-sm font-medium text-center text-[var(--c-texto)] mb-4">{tr.dashboard.ocupacionHora}</p>
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={ocupacion}>
+          <LineChart data={ocupacion} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={rejilla} />
-            <XAxis dataKey="hora" {...ejeProps} />
+            <XAxis dataKey="hora" {...ejeProps} interval={0} fontSize={11} />
             <YAxis allowDecimals={false} {...ejeProps} />
             <Tooltip {...tooltipProps} />
             <Line
@@ -82,7 +82,7 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={porMesTraducido}>
               <CartesianGrid strokeDasharray="3 3" stroke={rejilla} />
-              <XAxis dataKey="mes" {...ejeProps} />
+              <XAxis dataKey="mes" {...ejeProps} interval={0} />
               <YAxis allowDecimals={false} {...ejeProps} />
               <Tooltip {...tooltipProps} />
               <Legend wrapperStyle={{ color: "var(--c-texto-sec)" }} />
@@ -97,7 +97,7 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={porDiaTraducido}>
               <CartesianGrid strokeDasharray="3 3" stroke={rejilla} />
-              <XAxis dataKey="dia" {...ejeProps} />
+              <XAxis dataKey="dia" {...ejeProps} interval={0} />
               <YAxis allowDecimals={false} {...ejeProps} />
               <Tooltip {...tooltipProps} />
               <Bar dataKey="entradas" name={tr.dashboard.entradas} fill="var(--c-barras)" radius={[4, 4, 0, 0]} />

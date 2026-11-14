@@ -5,7 +5,8 @@ import { supabase, rpc, consulta, manejar, errorHttp, aMinusculas } from "../dat
 // porque el formulario de la web los pide por separado.
 function aCliente(f) {
   const partes = (f.nombre || "").trim().split(/\s+/);
-  const vigente = f.activa && f.estado === "ACTIVO";
+  const desactivado = f.estado !== "ACTIVO";
+  const vigente = f.activa && !desactivado;
   return {
     id: f.id,
     nombre: partes[0] || "",
@@ -15,42 +16,58 @@ function aCliente(f) {
     telefono: f.telefono,
     numMembresia: f.numero_membresia,
     codigoQr: f.codigo_qr,
-    plan: aMinusculas(f.plan) || "",
-    vence: f.fecha_fin,
+    // Si la cuenta fue desactivada o dada de baja, se le retira su plan activo
+    plan: desactivado ? "" : aMinusculas(f.plan) || "",
+    vence: desactivado ? null : f.fecha_fin,
     fechaRegistro: f.fecha_registro,
     estadoCuenta: aMinusculas(f.estado),
     estado: vigente ? "activo" : "inactivo",
   };
 }
 
+const esEliminadoArco = (f) =>
+  String(f.gmail || "").endsWith("@anonimo.axolotl") || f.nombre === "Cliente Eliminado";
+
 async function buscarPorId(id) {
   const filas = await consulta(supabase.from("clientes_lista").select("*").eq("id", Number(id)).limit(1));
-  if (!filas?.length) throw errorHttp(404, "Cliente no encontrado");
+  if (!filas?.length || esEliminadoArco(filas[0])) throw errorHttp(404, "Cliente no encontrado");
   return filas[0];
 }
 
-// Los planes en la base se llaman como en tipos_membresia (ej. "Mensual").
-// El frontend manda "mensual", asi que se busca sin importar mayusculas.
+// Solo planes cuyos servicios siguen activos en la vista Servicios del Encargado (servicio_id no nulo)
 async function nombrePlan(plan) {
   if (!plan) return null;
-  const tipos = await consulta(supabase.from("tipos_membresia").select("nombre"));
+  const tipos = await consulta(
+    supabase.from("tipos_membresia").select("nombre, servicio_id").not("servicio_id", "is", null)
+  );
   const tipo = tipos.find((t) => t.nombre.toLowerCase() === String(plan).toLowerCase());
   if (!tipo) throw errorHttp(400, `Plan no valido: ${plan}`);
   return tipo.nombre;
 }
 
-// Planes disponibles (tipos_membresia) para el formulario de la web
+// Planes disponibles (solo los que siguen activos en Servicios del Encargado)
 export const listarPlanes = manejar(async (req, res) => {
-  const planes = await consulta(supabase.from("tipos_membresia").select("id, nombre, precio, duracion_dias").order("precio"));
+  const planes = await consulta(
+    supabase
+      .from("tipos_membresia")
+      .select("id, nombre, precio, duracion_dias, servicio_id")
+      .not("servicio_id", "is", null)
+      .order("precio")
+  );
   res.json({ ok: true, planes: planes.map((p) => ({ ...p, precio: Number(p.precio) })) });
 });
 
 const nombreCompleto = (b) => `${(b.nombre || "").trim()} ${(b.apellido || "").trim()}`.trim();
 
+const limpiarBase64 = (b64) =>
+  String(b64 || "")
+    .trim()
+    .replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+
 export const listarClientes = manejar(async (req, res) => {
   const { buscar, estado } = req.query;
   const filas = await consulta(supabase.from("clientes_lista").select("*").order("nombre"));
-  let resultado = filas.map(aCliente);
+  let resultado = filas.filter((f) => !esEliminadoArco(f)).map(aCliente);
   if (buscar) {
     const q = String(buscar).toLowerCase();
     resultado = resultado.filter(
@@ -66,6 +83,13 @@ export const listarClientes = manejar(async (req, res) => {
 
 export const obtenerCliente = manejar(async (req, res) => {
   res.json({ ok: true, cliente: aCliente(await buscarPorId(req.params.id)) });
+});
+
+// Foto de perfil del cliente (JPEG en base64 desde foto_cliente_por_id) o null
+export const obtenerFotoCliente = manejar(async (req, res) => {
+  const b64 = await rpc("foto_cliente_por_id", { p_cliente_id: Number(req.params.id) });
+  const foto = b64 ? (String(b64).startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`) : null;
+  res.json({ ok: true, foto });
 });
 
 // Crea usuario + cliente + membresia (con su pago) usando crear_cliente.
@@ -101,32 +125,99 @@ export const actualizarCliente = manejar(async (req, res) => {
   res.json({ ok: true, cliente: aCliente(await buscarPorId(actual.id)) });
 });
 
-// Renueva con el plan que mande el frontend o, si no manda, con el ultimo que tuvo
+// Renueva membresía con Efectivo, Tarjeta o Transferencia (con imagen de comprobante)
 export const renovarCliente = manejar(async (req, res) => {
   const actual = await buscarPorId(req.params.id);
   const plan = await nombrePlan(req.body?.plan || actual.plan);
   if (!plan) {
     return res.status(400).json({ ok: false, mensaje: "El cliente no tiene plan previo; indica uno" });
   }
+
+  const metodo = req.body?.metodo || "Efectivo";
+
+  if (metodo === "Transferencia") {
+    const b64 = limpiarBase64(req.body?.comprobante);
+    if (!b64) {
+      return res.status(400).json({ ok: false, mensaje: "Falta la imagen del comprobante" });
+    }
+    await rpc("enviar_comprobante", {
+      p_gmail: actual.gmail,
+      p_plan: plan,
+      p_metodo: "Transferencia",
+      p_comprobante: b64,
+    });
+    return res.json({
+      ok: true,
+      cliente: aCliente(await buscarPorId(actual.id)),
+      mensaje: "Comprobante enviado. Pendiente de validación por el Encargado",
+    });
+  }
+
   await rpc("renovar_membresia", {
     p_cliente_id: actual.id,
     p_plan: plan,
-    p_registrado_por: req.usuario.correo,
-    p_metodo: req.body?.metodo || "Efectivo",
+    p_registrado_por: req.usuario?.correo || "encargado@axolotl.com",
+    p_metodo: metodo,
   });
+  // Si la cuenta del cliente estaba marcada como INACTIVO, la reactivamos al renovar con Efectivo/Tarjeta
+  if (actual.estado !== "ACTIVO") {
+    await rpc("editar_cliente", {
+      p_id: actual.id,
+      p_nombre: actual.nombre,
+      p_telefono: actual.telefono || "",
+      p_gmail: actual.gmail,
+      p_estado: "ACTIVO",
+    });
+  }
   res.json({ ok: true, cliente: aCliente(await buscarPorId(actual.id)), mensaje: "Membresia renovada" });
 });
 
-// La base no permite borrar clientes (tienen pagos y accesos ligados).
-// Se desactivan; la base elimina sola a los inactivos con eliminar_clientes_inactivos.
-export const eliminarCliente = manejar(async (req, res) => {
+// Recepción (y Encargado): desactiva el estatus del cliente y le retira su plan activo
+export const desactivarCliente = manejar(async (req, res) => {
   const actual = await buscarPorId(req.params.id);
   await rpc("editar_cliente", {
     p_id: actual.id,
     p_nombre: actual.nombre,
-    p_telefono: actual.telefono,
+    p_telefono: actual.telefono || "",
     p_gmail: actual.gmail,
     p_estado: "INACTIVO",
   });
-  res.json({ ok: true, mensaje: "Cliente desactivado" });
+  res.json({
+    ok: true,
+    cliente: aCliente(await buscarPorId(actual.id)),
+    mensaje: "Cliente desactivado y plan retirado",
+  });
+});
+
+// Solo Encargado / Dueño:
+// - tipo "suspension" (por defecto): da de baja/suspende la cuenta conforme a Términos y Políticas (se elimina tras 365 días de inactividad).
+// - tipo "arco": aplica revocación de consentimiento / Derechos ARCO eliminando todos los datos personales del cliente de inmediato y conservando solo los pagos con fines contables y fiscales.
+export const eliminarCliente = manejar(async (req, res) => {
+  const actual = await buscarPorId(req.params.id);
+  const tipo = req.body?.tipo || req.query?.tipo || "suspension";
+
+  if (tipo === "arco") {
+    await rpc("editar_cliente", {
+      p_id: actual.id,
+      p_nombre: "Cliente Eliminado",
+      p_telefono: "0000000000",
+      p_gmail: `eliminado_${actual.id}@anonimo.axolotl`,
+      p_estado: "INACTIVO",
+      p_contacto_nombre: "Eliminado",
+      p_contacto_telefono: "0000000000",
+    });
+    return res.json({
+      ok: true,
+      mensaje: "Datos personales del cliente eliminados por Derechos ARCO",
+    });
+  }
+
+  await rpc("editar_cliente", {
+    p_id: actual.id,
+    p_nombre: actual.nombre,
+    p_telefono: actual.telefono || "",
+    p_gmail: actual.gmail,
+    p_estado: "INACTIVO",
+  });
+  res.json({ ok: true, mensaje: "Cliente dado de baja conforme a términos y políticas" });
 });

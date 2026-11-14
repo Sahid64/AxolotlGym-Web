@@ -18,7 +18,7 @@ import pagosRoutes from "./src/routes/pagos.routes.js";
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "1mb" })); // el registro de rostro manda una foto pequeña
+app.use(express.json({ limit: "15mb" })); // soporta comprobantes de transferencia y foto de registro de rostro
 
 // Rutas
 app.use("/api/auth", authRoutes);

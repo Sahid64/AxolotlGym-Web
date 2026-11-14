@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../../api/api.js";
 import { useIdioma } from "../../context/IdiomaContext.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import Boton from "../../components/ui/Boton.jsx";
+import Modal from "../../components/ui/Modal.jsx";
 import CamaraFacial from "../../components/facial/CamaraFacial.jsx";
 
 const tarjeta = "bg-[var(--c-tarjeta)] border border-[var(--c-borde)] rounded-lg p-6";
@@ -35,6 +36,23 @@ export default function AccesoFacial() {
   const [ultimo, setUltimo] = useState(null); // { cliente, resultado, esEntrada, fechaHora }
   const [aviso, setAviso] = useState(null); // { tipo, texto }
   const [asistencia, setAsistencia] = useState({ total: 0, dentro: [] });
+  const [fotos, setFotos] = useState({});
+  const fotosPedidasRef = useRef(new Set());
+  const [clienteASacar, setClienteASacar] = useState(null);
+  const [procesandoSalida, setProcesandoSalida] = useState(false);
+
+  function pedirFotoCliente(id) {
+    if (!id || fotosPedidasRef.current.has(id)) return;
+    fotosPedidasRef.current.add(id);
+    api
+      .get(`/clientes/${id}/foto`)
+      .then(({ data: res }) => {
+        if (res?.foto) {
+          setFotos((prev) => ({ ...prev, [id]: res.foto }));
+        }
+      })
+      .catch(() => {});
+  }
 
   useEffect(() => {
     cargarAsistencia();
@@ -52,9 +70,35 @@ export default function AccesoFacial() {
   async function cargarAsistencia() {
     try {
       const { data } = await api.get("/acceso/hoy");
-      setAsistencia({ total: data.total, dentro: data.dentro });
+      const lista = data.dentro || [];
+      setAsistencia({ total: data.total, dentro: lista });
+      lista.forEach((p) => pedirFotoCliente(p.id));
     } catch {
       /* se reintenta en el siguiente ciclo */
+    }
+  }
+
+  async function confirmarSalidaManual() {
+    if (!clienteASacar) return;
+    setProcesandoSalida(true);
+    try {
+      const { data } = await api.post("/qr/salida-manual", {
+        clienteId: clienteASacar.id,
+      });
+      setAviso({
+        tipo: "ok",
+        texto: traducirMsg(data.mensaje) || t.salidaRegistrada,
+      });
+      setClienteASacar(null);
+      await cargarAsistencia();
+    } catch (err) {
+      setAviso({
+        tipo: "error",
+        texto: traducirMsg(err.response?.data?.mensaje) || t.errorRegistrar,
+      });
+      setClienteASacar(null);
+    } finally {
+      setProcesandoSalida(false);
     }
   }
 
@@ -62,7 +106,10 @@ export default function AccesoFacial() {
   async function alReconocer(vector) {
     try {
       const { data } = await api.post("/acceso/rostro", { embedding: vector });
-      if (data.cliente) setUltimo({ ...data, cliente: data.cliente });
+      if (data.cliente) {
+        setUltimo({ ...data, cliente: data.cliente });
+        pedirFotoCliente(data.cliente.id);
+      }
       setAviso({ tipo: TIPO_AVISO[data.resultado] || "error", texto: traducirMsg(data.mensaje) });
       if (data.ok) cargarAsistencia();
       // Si no lo reconocio, se deja intentar otra vez sin que se retire
@@ -117,9 +164,17 @@ export default function AccesoFacial() {
             ) : (
               <>
                 <div className="flex items-center gap-4">
-                  <div className="w-[72px] h-[72px] shrink-0 rounded-full border-2 border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-3xl font-bold text-[var(--c-acento)]">
-                    {c.nombre?.trim().charAt(0).toUpperCase()}
-                  </div>
+                  {fotos[c.id] ? (
+                    <img
+                      src={fotos[c.id]}
+                      alt={c.nombre}
+                      className="w-[72px] h-[72px] shrink-0 rounded-full border-2 border-[var(--c-acento)] object-cover bg-[var(--c-campo)]"
+                    />
+                  ) : (
+                    <div className="w-[72px] h-[72px] shrink-0 rounded-full border-2 border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-3xl font-bold text-[var(--c-acento)]">
+                      {c.nombre?.trim().charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <p className="text-lg font-bold text-[var(--c-texto)] truncate">{c.nombre}</p>
                     <p className="text-sm text-[var(--c-texto-sec)] mt-1">{t.membresia}: {c.numMembresia}</p>
@@ -162,20 +217,74 @@ export default function AccesoFacial() {
               <p className="text-sm text-[var(--c-texto-tenue)] text-center py-4">{t.nadieDentro}</p>
             ) : (
               <ul className="max-h-72 overflow-y-auto divide-y divide-[var(--c-borde-suave)]">
-                {asistencia.dentro.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between py-2.5 text-sm">
-                    <div className="min-w-0">
-                      <p className="text-[var(--c-texto)] truncate">{p.nombre}</p>
-                      <p className="text-xs text-[var(--c-texto-tenue)]">{p.numMembresia}</p>
-                    </div>
-                    <span className="text-[var(--c-texto-sec)] shrink-0">{t.desde} {hora(p.desde)}</span>
-                  </li>
-                ))}
+                {asistencia.dentro.map((p) => {
+                  const ini = (p.nombre || "?").trim().charAt(0).toUpperCase();
+                  const foto = fotos[p.id];
+                  return (
+                    <li key={p.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {foto ? (
+                          <img
+                            src={foto}
+                            alt={p.nombre}
+                            className="w-9 h-9 shrink-0 rounded-full border border-[var(--c-acento)] object-cover bg-[var(--c-campo)]"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 shrink-0 rounded-full border border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-xs font-bold text-[var(--c-acento)]">
+                            {ini}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-[var(--c-texto)] font-medium truncate">{p.nombre}</p>
+                          <p className="text-xs text-[var(--c-texto-tenue)]">
+                            {p.numMembresia} · {t.desde} {hora(p.desde)}
+                          </p>
+                        </div>
+                      </div>
+                      <Boton
+                        variante="peligro"
+                        className="shrink-0 text-xs"
+                        onClick={() => setClienteASacar(p)}
+                      >
+                        {t.sacarManualBtn}
+                      </Boton>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
         </div>
       </div>
+
+      {/* Modal de confirmación para registrar salida manual de un cliente dentro */}
+      <Modal
+        abierto={Boolean(clienteASacar)}
+        titulo={t.confirmarSalidaManualTitulo}
+        onClose={() => !procesandoSalida && setClienteASacar(null)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {t.confirmarSalidaManualMsg(clienteASacar?.nombre || "")}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton
+            variante="outline"
+            className="flex-1"
+            disabled={procesandoSalida}
+            onClick={() => setClienteASacar(null)}
+          >
+            {tr.cancelar}
+          </Boton>
+          <Boton
+            variante="peligro"
+            className="flex-1"
+            disabled={procesandoSalida}
+            onClick={confirmarSalidaManual}
+          >
+            {t.confirmarSalidaManualBtn}
+          </Boton>
+        </div>
+      </Modal>
     </div>
   );
 }

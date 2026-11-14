@@ -52,10 +52,17 @@ export default function Personal() {
   const { tr, traducirMsg } = useIdioma();
   const [personal, setPersonal] = useState([]);
   const [aviso, setAviso] = useState("");
+  const [buscar, setBuscar] = useState("");
+  const [filtroRol, setFiltroRol] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState(null); // null = creando, id = editando
   const [form, setForm] = useState(vacio);
   const [errores, setErrores] = useState({});
+
+  // Confirmación antes de guardar (crear / editar) y antes de eliminar
+  const [confirmandoGuardar, setConfirmandoGuardar] = useState(false);
+  const [empleadoAEliminar, setEmpleadoAEliminar] = useState(null);
 
   const vNombre = (v, etiqueta) => {
     const t = v.trim();
@@ -107,6 +114,7 @@ export default function Personal() {
     setEditandoId(null);
     setForm(vacio);
     setErrores({});
+    setConfirmandoGuardar(false);
     setModalAbierto(true);
   }
 
@@ -123,6 +131,7 @@ export default function Personal() {
       capacidadMaxima: empleado.capacidadMaxima ?? "",
     });
     setErrores({});
+    setConfirmandoGuardar(false);
     setModalAbierto(true);
   }
 
@@ -131,9 +140,11 @@ export default function Personal() {
     setEditandoId(null);
     setForm(vacio);
     setErrores({});
+    setConfirmandoGuardar(false);
   }
 
-  async function guardar(e) {
+  // Paso 1: Validar formulario y abrir modal de confirmación
+  function validarYPedirConfirmacion(e) {
     e.preventDefault();
 
     const esInstructor = form.rol === "instructor";
@@ -148,6 +159,11 @@ export default function Personal() {
     setErrores(errs);
     if (Object.values(errs).some(Boolean)) return;
 
+    setConfirmandoGuardar(true);
+  }
+
+  // Paso 2: Ejecutar guardado tras confirmar
+  async function confirmarGuardarPersonal() {
     const datos = {
       ...form,
       nombre: form.nombre.trim(),
@@ -165,6 +181,7 @@ export default function Personal() {
         setAviso(traducirMsg(data.mensaje) || "");
       }
     } catch (err) {
+      setConfirmandoGuardar(false);
       setErrores((er) => ({ ...er, general: traducirMsg(err.response?.data?.mensaje) || tr.personal.errorGuardar }));
       return;
     }
@@ -173,13 +190,15 @@ export default function Personal() {
     cargar();
   }
 
-  async function eliminar(id) {
+  async function confirmarEliminarPersonal() {
+    if (!empleadoAEliminar) return;
     try {
-      const { data } = await api.delete(`/personal/${id}`);
+      const { data } = await api.delete(`/personal/${empleadoAEliminar.id}`);
       setAviso(traducirMsg(data.mensaje) || "");
     } catch (err) {
       setAviso(traducirMsg(err.response?.data?.mensaje) || tr.personal.errorEliminar);
     }
+    setEmpleadoAEliminar(null);
     cargar();
   }
 
@@ -194,11 +213,22 @@ export default function Personal() {
       render: (f) => (
         <div className="flex items-center justify-center gap-2">
           <Boton variante="outline" onClick={() => abrirEditar(f)}>{tr.editar}</Boton>
-          <Boton variante="peligro" onClick={() => eliminar(f.id)}>{tr.eliminar}</Boton>
+          <Boton variante="peligro" onClick={() => setEmpleadoAEliminar(f)}>{tr.eliminar}</Boton>
         </div>
       ),
     },
   ];
+
+  const personalFiltrado = personal.filter((p) => {
+    const q = buscar.trim().toLowerCase();
+    const coincideTexto =
+      !q ||
+      (p.nombre || "").toLowerCase().includes(q) ||
+      (p.correo || "").toLowerCase().includes(q);
+    const coincideRol = !filtroRol || p.rol === filtroRol;
+    const coincideEstado = !filtroEstado || p.estado === filtroEstado;
+    return coincideTexto && coincideRol && coincideEstado;
+  });
 
   return (
     <div>
@@ -207,16 +237,45 @@ export default function Personal() {
         <Boton onClick={abrirNuevo}>{tr.personal.nuevoBtn}</Boton>
       </div>
 
-      {aviso && <p className="text-sm text-[var(--c-ambar-texto)] mb-3">{aviso}</p>}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <input
+          value={buscar}
+          onChange={(e) => setBuscar(e.target.value)}
+          placeholder={tr.personal.buscarPlaceholder}
+          className={`flex-1 min-w-[200px] ${campo}`}
+        />
+        <select
+          value={filtroRol}
+          onChange={(e) => setFiltroRol(e.target.value)}
+          className={campo}
+        >
+          <option value="">{tr.personal.todosRoles}</option>
+          <option value="recepcion">{tr.roles.recepcion}</option>
+          <option value="instructor">{tr.roles.instructor}</option>
+          <option value="encargado">{tr.roles.encargado}</option>
+        </select>
+        <select
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          className={campo}
+        >
+          <option value="">{tr.todos}</option>
+          <option value="activo">{tr.personal.activo}</option>
+          <option value="inactivo">{tr.personal.inactivo}</option>
+        </select>
+      </div>
 
-      <Table columnas={columnas} filas={personal} />
+      {aviso && <p className="text-sm text-center text-[var(--c-ambar-texto)] mb-3">{aviso}</p>}
 
+      <Table columnas={columnas} filas={personalFiltrado} />
+
+      {/* Modal para Agregar / Editar Personal */}
       <Modal
         abierto={modalAbierto}
         titulo={editandoId ? tr.personal.modalEditar : tr.personal.modalNuevo}
         onClose={cerrarModal}
       >
-        <form onSubmit={guardar} noValidate>
+        <form onSubmit={validarYPedirConfirmacion} noValidate>
           <Input label={tr.personal.nombre} value={form.nombre} onChange={cambiar("nombre", limpiarLetras)} />
           <Err msg={errores.nombre} />
 
@@ -246,6 +305,7 @@ export default function Personal() {
             options={[
               { value: "recepcion", label: tr.roles.recepcion },
               { value: "instructor", label: tr.roles.instructor },
+              ...(form.rol === "encargado" ? [{ value: "encargado", label: tr.roles.encargado }] : []),
             ]}
           />
           <SelectPaleta
@@ -284,6 +344,44 @@ export default function Personal() {
             {editandoId ? tr.guardarCambios : tr.personal.guardarNuevo}
           </Boton>
         </form>
+      </Modal>
+
+      {/* Modal de confirmación antes de guardar personal */}
+      <Modal
+        abierto={confirmandoGuardar}
+        titulo={tr.personal.confirmarGuardarTitulo}
+        onClose={() => setConfirmandoGuardar(false)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {editandoId ? tr.personal.confirmarEditarMsg : tr.personal.confirmarCrearMsg}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setConfirmandoGuardar(false)}>
+            {tr.cancelar}
+          </Boton>
+          <Boton className="flex-1" onClick={confirmarGuardarPersonal}>
+            {tr.confirmar}
+          </Boton>
+        </div>
+      </Modal>
+
+      {/* Modal de confirmación antes de eliminar personal */}
+      <Modal
+        abierto={Boolean(empleadoAEliminar)}
+        titulo={tr.personal.confirmarEliminarTitulo}
+        onClose={() => setEmpleadoAEliminar(null)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {tr.personal.confirmarEliminarMsg(empleadoAEliminar?.nombre || "")}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setEmpleadoAEliminar(null)}>
+            {tr.cancelar}
+          </Boton>
+          <Boton variante="peligro" className="flex-1" onClick={confirmarEliminarPersonal}>
+            {tr.personal.confirmarEliminarBtn}
+          </Boton>
+        </div>
       </Modal>
     </div>
   );

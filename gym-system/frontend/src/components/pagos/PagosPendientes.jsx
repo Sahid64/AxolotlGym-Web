@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/api.js";
+import { useIdioma } from "../../context/IdiomaContext.jsx";
 import Boton from "../ui/Boton.jsx";
 import Modal from "../ui/Modal.jsx";
 
@@ -9,8 +10,6 @@ const dinero = (n) =>
 const fechaApp = (iso) =>
   iso ? new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
-const msgError = (e, base) => `${base}: ${e.response?.data?.mensaje || e.message}`;
-
 /**
  * Pagos pendientes de validar (equivale a PagosScreen de la app en Kotlin).
  * - puedeVerComprobante=true  -> Encargado / Dueño: ve la imagen y puede resolver todo.
@@ -18,6 +17,7 @@ const msgError = (e, base) => `${base}: ${e.response?.data?.mensaje || e.message
  *   no sean transferencia (igual que confirmar_pago en la BD).
  */
 export default function PagosPendientes({ puedeVerComprobante = false }) {
+  const { tr, traducirMsg, traducirPlan } = useIdioma();
   const [pagos, setPagos] = useState([]);
   const [imagenes, setImagenes] = useState({}); // id -> dataURI | null
   const [cargando, setCargando] = useState(true);
@@ -28,6 +28,8 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
   const [procesando, setProcesando] = useState(false);
   const [ampliada, setAmpliada] = useState(null);
   const pedidas = useRef(new Set()); // comprobantes ya solicitados
+
+  const msgError = (e, base) => `${base}: ${traducirMsg(e.response?.data?.mensaje) || e.message}`;
 
   useEffect(() => {
     recargar();
@@ -44,7 +46,7 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
           .forEach((p) => cargarImagen(p.id));
       }
     } catch (e) {
-      setError(msgError(e, "No se pudo cargar"));
+      setError(msgError(e, tr.pagos.errorCargar));
     } finally {
       setCargando(false);
     }
@@ -66,16 +68,16 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
     try {
       if (aceptar) {
         await api.put(`/pagos/${pago.id}/aceptar`);
-        setMensaje(`Pago de ${pago.cliente} validado. Su membresía quedó activa.`);
+        setMensaje(tr.pagos.pagoValidadoMsg(pago.cliente));
       } else {
         await api.put(`/pagos/${pago.id}/rechazar`, { motivo: motivo.trim() });
-        setMensaje(`Pago de ${pago.cliente} rechazado.`);
+        setMensaje(tr.pagos.pagoRechazadoMsg(pago.cliente));
       }
       setError("");
       await recargar();
     } catch (e) {
       setMensaje("");
-      setError(msgError(e, "No se pudo guardar"));
+      setError(msgError(e, tr.pagos.errorGuardar));
     } finally {
       setProcesando(false);
       setConfirmar(null);
@@ -86,17 +88,19 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-[var(--c-texto)]">Pagos</h1>
-      <p className="text-sm text-[var(--c-texto-sec)] mb-6">Pendientes de validar: {pagos.length}</p>
+      <h1 className="text-xl font-semibold text-[var(--c-texto)]">{tr.pagos.titulo}</h1>
+      <p className="text-sm text-[var(--c-texto-sec)] mb-6">{tr.pagos.pendientes(pagos.length)}</p>
 
-      {mensaje && <p className="text-sm text-[var(--c-verde)] mb-3">{mensaje}</p>}
-      {error && <p className="text-sm text-[var(--c-rojo)] mb-3">{error}</p>}
+      {mensaje && <p className="text-sm text-center text-[var(--c-verde)] mb-3">{mensaje}</p>}
+      {error && <p className="text-sm text-center text-[var(--c-rojo)] mb-3">{error}</p>}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {pagos.map((pago) => (
           <PagoCard
             key={pago.id}
             pago={pago}
+            tr={tr}
+            traducirPlan={traducirPlan}
             mostrarImagen={puedeVerComprobante}
             imagen={imagenes[pago.id]}
             cargandoImagen={puedeVerComprobante && pago.tieneComprobante && imagenes[pago.id] === undefined}
@@ -114,28 +118,28 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
 
       {pagos.length === 0 && !cargando && !error && (
         <p className="text-center text-sm text-[var(--c-texto-sec)] mt-10">
-          No hay pagos pendientes por validar.
+          {tr.pagos.sinPendientes}
         </p>
       )}
 
       {/* Confirmación aceptar / rechazar */}
       <Modal
         abierto={!!confirmar}
-        titulo={confirmar?.aceptar ? "Aceptar pago" : "Rechazar pago"}
+        titulo={confirmar?.aceptar ? tr.pagos.modalAceptarTitulo : tr.pagos.modalRechazarTitulo}
         onClose={() => !procesando && setConfirmar(null)}
       >
         {confirmar && (
           <div>
-            <p className="text-sm text-[var(--c-texto-sec)] mb-4">
+            <p className="text-sm text-center text-[var(--c-texto-sec)] mb-4">
               {confirmar.aceptar
-                ? `¿Validar el pago de ${dinero(confirmar.pago.monto)} de ${confirmar.pago.cliente}? Se sumará a los ingresos de hoy y se activará su membresía.`
-                : `¿Rechazar el pago de ${confirmar.pago.cliente}? No se sumará a los ingresos y el cliente verá el motivo en su pestaña Pagos.`}
+                ? tr.pagos.confirmarAceptarMsg(dinero(confirmar.pago.monto), confirmar.pago.cliente)
+                : tr.pagos.confirmarRechazarMsg(confirmar.pago.cliente)}
             </p>
 
             {!confirmar.aceptar && (
               <label className="block mb-4">
                 <span className="block text-sm font-medium text-[var(--c-texto-sec)] mb-1">
-                  Motivo del rechazo
+                  {tr.pagos.motivoRechazo}
                 </span>
                 <textarea
                   rows={3}
@@ -143,22 +147,23 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
                   value={motivo}
                   disabled={procesando}
                   onChange={(e) => setMotivo(e.target.value)}
-                  placeholder="Ej. El monto no coincide con el plan"
+                  placeholder={tr.pagos.motivoPlaceholder}
                   className="w-full bg-[var(--c-campo)] border border-[var(--c-borde)] text-[var(--c-texto)] placeholder:text-[var(--c-texto-tenue)] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[var(--c-rojo)]"
                 />
               </label>
             )}
 
-            <div className="flex justify-end gap-2">
-              <Boton variante="ghost" disabled={procesando} onClick={() => setConfirmar(null)}>
-                Cancelar
+            <div className="flex items-center justify-center gap-3">
+              <Boton variante="outline" className="flex-1" disabled={procesando} onClick={() => setConfirmar(null)}>
+                {tr.cancelar}
               </Boton>
               <Boton
                 variante={confirmar.aceptar ? "exito" : "peligro"}
+                className="flex-1"
                 disabled={procesando || (!confirmar.aceptar && motivo.trim().length < 3)}
                 onClick={resolver}
               >
-                {confirmar.aceptar ? "Aceptar" : "Rechazar"}
+                {confirmar.aceptar ? tr.pagos.aceptar : tr.pagos.rechazar}
               </Boton>
             </div>
           </div>
@@ -166,8 +171,8 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
       </Modal>
 
       {/* Comprobante ampliado */}
-      <Modal abierto={!!ampliada} titulo="Comprobante de pago" onClose={() => setAmpliada(null)}>
-        {ampliada && <img src={ampliada} alt="Comprobante de pago" className="w-full max-h-[70vh] object-contain" />}
+      <Modal abierto={!!ampliada} titulo={tr.pagos.comprobanteModalTitulo} onClose={() => setAmpliada(null)}>
+        {ampliada && <img src={ampliada} alt={tr.pagos.comprobanteModalTitulo} className="w-full max-h-[70vh] object-contain" />}
       </Modal>
     </div>
   );
@@ -175,19 +180,19 @@ export default function PagosPendientes({ puedeVerComprobante = false }) {
 
 /** Tarjeta con: cliente, plan, monto, método, comprobante y botones. */
 function PagoCard({
-  pago, mostrarImagen, imagen, cargandoImagen, habilitado, soloEncargado,
+  pago, tr, traducirPlan, mostrarImagen, imagen, cargandoImagen, habilitado, soloEncargado,
   onAmpliar, onAceptar, onRechazar,
 }) {
   return (
-    <div className="bg-[var(--c-tarjeta)] border border-[var(--c-borde)] rounded-2xl p-4 flex flex-col">
+    <div className="bg-[var(--c-tarjeta)] border border-[var(--c-borde)] rounded-2xl p-4 flex flex-col text-center">
       <p className="text-lg font-bold text-[var(--c-texto)]">{pago.cliente}</p>
       {pago.numMembresia && <p className="text-xs text-[var(--c-texto-sec)]">{pago.numMembresia}</p>}
 
       <p className="mt-2 text-sm font-medium text-[var(--c-acento)]">
-        Plan: {pago.plan || "—"} · {dinero(pago.monto)}
+        {tr.pagos.planLabel}: {traducirPlan(pago.plan) || "—"} · {dinero(pago.monto)}
       </p>
       <p className="text-xs text-[var(--c-texto-sec)]">
-        {pago.metodo} · enviado el {fechaApp(pago.fecha)}
+        {tr.clientes?.metodos?.[pago.metodo] || pago.metodo} · {tr.pagos.enviadoEl} {fechaApp(pago.fecha)}
       </p>
 
       {/* Comprobante (la imagen solo la ve el Encargado) */}
@@ -200,35 +205,35 @@ function PagoCard({
             className="w-full h-full max-h-[260px] object-contain cursor-zoom-in"
           />
         ) : mostrarImagen && cargandoImagen ? (
-          <span className="text-xs text-[var(--c-texto-sec)]">Cargando comprobante…</span>
+          <span className="text-xs text-[var(--c-texto-sec)]">{tr.pagos.cargandoComprobante}</span>
         ) : (
           <div className="text-center px-3">
             <p className="text-3xl text-[var(--c-texto-sec)]">🖼</p>
             <p className="text-xs text-[var(--c-texto-sec)]">
               {!pago.tieneComprobante
-                ? "Sin comprobante (registrado en Recepción)"
+                ? tr.pagos.sinComprobante
                 : mostrarImagen
-                ? "No se pudo cargar el comprobante"
-                : "Comprobante de pago (solo lo ve el Encargado)"}
+                ? tr.pagos.errorComprobante
+                : tr.pagos.soloEncargadoImg}
             </p>
           </div>
         )}
       </div>
       {mostrarImagen && imagen && (
-        <p className="text-[11px] text-[var(--c-texto-sec)] mt-1">Haz clic en la imagen para ampliarla</p>
+        <p className="text-[11px] text-[var(--c-texto-sec)] mt-1">{tr.pagos.clicAmpliar}</p>
       )}
 
       <div className="mt-3 flex gap-3">
         <Boton variante="peligro" className="flex-1 font-bold" disabled={!habilitado} onClick={onRechazar}>
-          Rechazar
+          {tr.pagos.rechazar}
         </Boton>
         <Boton variante="exito" className="flex-1 font-bold" disabled={!habilitado} onClick={onAceptar}>
-          Aceptar
+          {tr.pagos.aceptar}
         </Boton>
       </div>
       {soloEncargado && (
         <p className="text-[11px] text-[var(--c-texto-sec)] mt-2 text-center">
-          Las transferencias las valida el Encargado.
+          {tr.pagos.soloEncargadoValidar}
         </p>
       )}
     </div>

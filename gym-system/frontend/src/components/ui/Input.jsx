@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useIdioma } from "../../context/IdiomaContext.jsx";
 
 export default function Input({ label, type, ...props }) {
   const [ver, setVer] = useState(false);
+  const { tr } = useIdioma();
   const esPassword = type === "password";
 
   return (
@@ -27,8 +29,8 @@ export default function Input({ label, type, ...props }) {
           <button
             type="button"
             onClick={() => setVer((v) => !v)}
-            aria-label={ver ? "Ocultar contraseña" : "Mostrar contraseña"}
-            title={ver ? "Ocultar contraseña" : "Mostrar contraseña"}
+            aria-label={ver ? tr.ocultarPassword : tr.mostrarPassword}
+            title={ver ? tr.ocultarPassword : tr.mostrarPassword}
             tabIndex={-1}
             className="absolute inset-y-0 right-0 px-3 flex items-center text-[var(--c-texto-sec)] hover:text-[var(--c-acento)] transition-colors"
           >

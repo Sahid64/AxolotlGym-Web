@@ -13,11 +13,12 @@ import reportesRoutes from "./src/routes/reportes.routes.js";
 import dashboardRoutes from "./src/routes/dashboard.routes.js";
 import asesoriasRoutes from "./src/routes/asesorias.routes.js";
 import qrRoutes from "./src/routes/qr.routes.js";
+import accesoRoutes from "./src/routes/acceso.routes.js";
 import pagosRoutes from "./src/routes/pagos.routes.js";   
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "1mb" })); // el registro de rostro manda una foto pequeña
 
 // Rutas
 app.use("/api/auth", authRoutes);
@@ -30,6 +31,7 @@ app.use("/api/reportes", reportesRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/asesorias", asesoriasRoutes);
 app.use("/api/qr", qrRoutes);
+app.use("/api/acceso", accesoRoutes); // reconocimiento facial (toma de lista)
 app.use("/api/pagos", pagosRoutes);                    
 
 app.get("/", (req, res) => {

@@ -6,6 +6,7 @@ import Badge from "../../components/ui/Badge.jsx";
 import Boton from "../../components/ui/Boton.jsx";
 import Modal from "../../components/ui/Modal.jsx";
 import Input from "../../components/ui/Input.jsx";
+import CamaraFacial from "../../components/facial/CamaraFacial.jsx";
 
 const campo =
   "bg-[var(--c-campo)] border border-[var(--c-borde)] rounded-md px-3 py-2 text-sm text-[var(--c-texto)] " +
@@ -35,6 +36,9 @@ export default function Clientes() {
   const [editandoId, setEditandoId] = useState(null); // null = creando, id = editando
   const [form, setForm] = useState(formVacio);
   const [errores, setErrores] = useState({});
+  const [conRostro, setConRostro] = useState(new Set()); // ids con rostro registrado
+  const [rostroDe, setRostroDe] = useState(null); // cliente al que se le registra el rostro
+  const [rostroMsg, setRostroMsg] = useState(null); // { tipo: "ok" | "error", texto }
 
   const vNombre = (v, etiqueta) => {
     const t = v.trim();
@@ -68,6 +72,41 @@ export default function Clientes() {
   async function cargar() {
     const { data } = await api.get("/clientes", { params: { buscar, estado } });
     setClientes(data.clientes);
+  }
+
+  // ---------- Rostro (reconocimiento facial) ----------
+  async function cargarRostros() {
+    try {
+      const { data } = await api.get("/clientes/rostros");
+      setConRostro(new Set(data.ids));
+    } catch {
+      setConRostro(new Set());
+    }
+  }
+
+  useEffect(() => {
+    cargarRostros();
+  }, []);
+
+  function abrirRostro(cliente) {
+    setRostroMsg(null);
+    setRostroDe(cliente);
+  }
+
+  // Lo llama la camara cuando ya tiene el vector (promedio de 5 muestras del rostro)
+  async function guardarRostro(vector, foto) {
+    try {
+      await api.post(`/clientes/${rostroDe.id}/rostro`, { embedding: vector, foto });
+      setRostroMsg({ tipo: "ok", texto: tr.facial.rostroRegistrado });
+      cargarRostros();
+      setTimeout(() => setRostroDe(null), 1500);
+    } catch (err) {
+      setRostroMsg({
+        tipo: "error",
+        texto: traducirMsg(err.response?.data?.mensaje) || tr.facial.errorRegistrarRostro,
+      });
+      throw err; // la camara deja intentar de nuevo
+    }
   }
 
   // Actualiza un campo (limpiando lo inválido) y quita su error
@@ -166,14 +205,30 @@ export default function Clientes() {
     { key: "fechaRegistro", label: tr.clientes.colFechaRegistro },
     { key: "estado", label: tr.clientes.colEstado, render: (f) => <Badge estado={f.estado} /> },
     {
+      key: "rostro",
+      label: tr.facial.colRostro,
+      render: (f) =>
+        conRostro.has(f.id) ? (
+          <span className="text-[var(--c-verde-texto)] font-bold">✓ {tr.facial.registrado}</span>
+        ) : (
+          <span className="text-[var(--c-texto-tenue)]">{tr.facial.sinRostro}</span>
+        ),
+    },
+    {
       key: "acciones",
       label: tr.acciones,
-      render: (f) =>
-        f.estado === "activo" ? (
-          <Boton variante="outline" onClick={() => abrirEditar(f)}>{tr.editar}</Boton>
-        ) : (
-          <Boton variante="outline" onClick={() => renovar(f.id)}>{tr.renovar}</Boton>
-        ),
+      render: (f) => (
+        <div className="flex gap-2">
+          {f.estado === "activo" ? (
+            <Boton variante="outline" onClick={() => abrirEditar(f)}>{tr.editar}</Boton>
+          ) : (
+            <Boton variante="outline" onClick={() => renovar(f.id)}>{tr.renovar}</Boton>
+          )}
+          <Boton variante="outline" onClick={() => abrirRostro(f)}>
+            {conRostro.has(f.id) ? tr.facial.actualizarRostro : tr.facial.registrarRostro}
+          </Boton>
+        </div>
+      ),
     },
   ];
 
@@ -254,6 +309,35 @@ export default function Clientes() {
             {editandoId ? tr.guardarCambios : tr.clientes.guardarNuevo}
           </Boton>
         </form>
+      </Modal>
+
+      {/* Registro de rostro: se monta solo mientras esta abierto, asi la camara se apaga al cerrar */}
+      <Modal
+        abierto={!!rostroDe}
+        titulo={`${tr.facial.registrarRostro}: ${rostroDe?.nombreCompleto || rostroDe?.nombre || ""}`}
+        onClose={() => setRostroDe(null)}
+      >
+        <p className="text-sm text-[var(--c-texto-sec)] mb-4">{tr.facial.instruccionRegistro}</p>
+        {rostroMsg && (
+          <p
+            className={`mb-3 rounded-lg border px-4 py-2.5 text-center text-sm font-bold ${
+              rostroMsg.tipo === "ok"
+                ? "border-[var(--c-verde)] bg-[var(--c-verde-bg)] text-[var(--c-verde-texto)]"
+                : "border-[var(--c-rojo)] bg-[var(--c-rojo-bg)] text-[var(--c-rojo-texto)]"
+            }`}
+          >
+            {rostroMsg.texto}
+          </p>
+        )}
+        {rostroDe && (
+          <CamaraFacial
+            key={rostroDe.id}
+            muestrasNecesarias={5}
+            modo="unico"
+            encenderAlAbrir
+            onRostro={guardarRostro}
+          />
+        )}
       </Modal>
     </div>
   );

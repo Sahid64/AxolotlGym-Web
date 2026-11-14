@@ -4,10 +4,13 @@ import { useIdioma } from "../../context/IdiomaContext.jsx";
 import Table from "../../components/ui/Table.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import Boton from "../../components/ui/Boton.jsx";
+import Modal from "../../components/ui/Modal.jsx";
 
 export default function Solicitudes() {
-  const { tr } = useIdioma();
+  const { tr, traducirMsg } = useIdioma();
   const [solicitudes, setSolicitudes] = useState([]);
+  const [aviso, setAviso] = useState("");
+  const [confirmando, setConfirmando] = useState(null); // { solicitud, accion: "aprobar" | "rechazar" }
 
   useEffect(() => {
     cargar();
@@ -18,13 +21,16 @@ export default function Solicitudes() {
     setSolicitudes(data.solicitudes);
   }
 
-  async function aprobar(id) {
-    await api.put(`/solicitudes/${id}/aprobar`);
-    cargar();
-  }
-
-  async function rechazar(id) {
-    await api.put(`/solicitudes/${id}/rechazar`);
+  async function ejecutarAccion() {
+    if (!confirmando) return;
+    const { solicitud, accion } = confirmando;
+    try {
+      const { data } = await api.put(`/solicitudes/${solicitud.id}/${accion}`);
+      setAviso(traducirMsg(data.mensaje) || "");
+    } catch (err) {
+      setAviso(traducirMsg(err.response?.data?.mensaje) || "");
+    }
+    setConfirmando(null);
     cargar();
   }
 
@@ -40,8 +46,12 @@ export default function Solicitudes() {
       render: (f) =>
         f.estado === "pendiente" ? (
           <div className="flex items-center justify-center gap-2">
-            <Boton variante="exito" onClick={() => aprobar(f.id)}>{tr.solicitudes.aprobar}</Boton>
-            <Boton variante="peligro" onClick={() => rechazar(f.id)}>{tr.solicitudes.rechazar}</Boton>
+            <Boton variante="exito" onClick={() => setConfirmando({ solicitud: f, accion: "aprobar" })}>
+              {tr.solicitudes.aprobar}
+            </Boton>
+            <Boton variante="peligro" onClick={() => setConfirmando({ solicitud: f, accion: "rechazar" })}>
+              {tr.solicitudes.rechazar}
+            </Boton>
           </div>
         ) : (
           <span className="text-[var(--c-texto-tenue)] text-xs">{tr.solicitudes.sinAcciones}</span>
@@ -59,7 +69,48 @@ export default function Solicitudes() {
           <span className="bg-[var(--c-rojo)] text-white text-xs rounded-full px-2 py-0.5">{pendientes}</span>
         )}
       </div>
+
+      {aviso && <p className="text-sm text-center text-[var(--c-ambar-texto)] mb-3">{aviso}</p>}
+
       <Table columnas={columnas} filas={solicitudes} />
+
+      <Modal
+        abierto={Boolean(confirmando)}
+        titulo={
+          confirmando?.accion === "aprobar"
+            ? tr.solicitudes.confirmarAprobarTitulo
+            : tr.solicitudes.confirmarRechazarTitulo
+        }
+        onClose={() => setConfirmando(null)}
+      >
+        {confirmando && (
+          <>
+            <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+              {confirmando.accion === "aprobar"
+                ? tr.solicitudes.confirmarAprobarMsg(
+                    confirmando.solicitud.clienteNombre,
+                    confirmando.solicitud.instructorNombre
+                  )
+                : tr.solicitudes.confirmarRechazarMsg(
+                    confirmando.solicitud.clienteNombre,
+                    confirmando.solicitud.instructorNombre
+                  )}
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <Boton variante="outline" className="flex-1" onClick={() => setConfirmando(null)}>
+                {tr.cancelar}
+              </Boton>
+              <Boton
+                variante={confirmando.accion === "aprobar" ? "exito" : "peligro"}
+                className="flex-1"
+                onClick={ejecutarAccion}
+              >
+                {confirmando.accion === "aprobar" ? tr.solicitudes.aprobar : tr.solicitudes.rechazar}
+              </Boton>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

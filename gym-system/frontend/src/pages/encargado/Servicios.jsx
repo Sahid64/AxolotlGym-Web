@@ -25,12 +25,17 @@ const Err = ({ msg }) =>
 const vacio = { nombre: "", duracion: "", precio: "" };
 
 export default function Servicios() {
-  const { tr, traducirMsg } = useIdioma();
+  const { tr, traducirMsg, traducirPlan, traducirDuracion } = useIdioma();
   const [servicios, setServicios] = useState([]);
+  const [aviso, setAviso] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState(null); // null = creando, id = editando
   const [form, setForm] = useState(vacio);
   const [errores, setErrores] = useState({});
+
+  // Avisos de confirmación antes de guardar o eliminar
+  const [confirmandoGuardar, setConfirmandoGuardar] = useState(false);
+  const [servicioAEliminar, setServicioAEliminar] = useState(null);
 
   const vTexto = (v, etiqueta) => {
     const t = v.trim();
@@ -66,6 +71,7 @@ export default function Servicios() {
     setEditandoId(null);
     setForm(vacio);
     setErrores({});
+    setConfirmandoGuardar(false);
     setModalAbierto(true);
   }
 
@@ -77,6 +83,7 @@ export default function Servicios() {
       precio: servicio.precio ?? "",
     });
     setErrores({});
+    setConfirmandoGuardar(false);
     setModalAbierto(true);
   }
 
@@ -85,9 +92,10 @@ export default function Servicios() {
     setEditandoId(null);
     setForm(vacio);
     setErrores({});
+    setConfirmandoGuardar(false);
   }
 
-  async function guardar(e) {
+  function validarYPedirConfirmacion(e) {
     e.preventDefault();
 
     const errs = {
@@ -98,6 +106,10 @@ export default function Servicios() {
     setErrores(errs);
     if (Object.values(errs).some(Boolean)) return;
 
+    setConfirmandoGuardar(true);
+  }
+
+  async function confirmarGuardarServicio() {
     const datos = {
       ...form,
       nombre: form.nombre.trim(),
@@ -110,7 +122,9 @@ export default function Servicios() {
       } else {
         await api.post("/servicios", datos);
       }
+      setAviso("");
     } catch (err) {
+      setConfirmandoGuardar(false);
       setErrores((er) => ({ ...er, general: traducirMsg(err.response?.data?.mensaje) || tr.servicios.errorGuardar }));
       return;
     }
@@ -119,14 +133,21 @@ export default function Servicios() {
     cargar();
   }
 
-  async function eliminar(id) {
-    await api.delete(`/servicios/${id}`);
+  async function confirmarEliminarServicio() {
+    if (!servicioAEliminar) return;
+    try {
+      await api.delete(`/servicios/${servicioAEliminar.id}`);
+      setAviso("");
+    } catch (err) {
+      setAviso(traducirMsg(err.response?.data?.mensaje) || tr.servicios.errorEliminar);
+    }
+    setServicioAEliminar(null);
     cargar();
   }
 
   const columnas = [
-    { key: "nombre", label: tr.servicios.colNombre },
-    { key: "duracion", label: tr.servicios.colDuracion },
+    { key: "nombre", label: tr.servicios.colNombre, render: (f) => traducirPlan(f.nombre) },
+    { key: "duracion", label: tr.servicios.colDuracion, render: (f) => traducirDuracion(f.duracion) },
     { key: "precio", label: tr.servicios.colPrecio, render: (f) => `$${f.precio}` },
     {
       key: "acciones",
@@ -134,7 +155,7 @@ export default function Servicios() {
       render: (f) => (
         <div className="flex items-center justify-center gap-2">
           <Boton variante="outline" onClick={() => abrirEditar(f)}>{tr.editar}</Boton>
-          <Boton variante="peligro" onClick={() => eliminar(f.id)}>{tr.eliminar}</Boton>
+          <Boton variante="peligro" onClick={() => setServicioAEliminar(f)}>{tr.eliminar}</Boton>
         </div>
       ),
     },
@@ -147,6 +168,8 @@ export default function Servicios() {
         <Boton onClick={abrirNuevo}>{tr.servicios.nuevoBtn}</Boton>
       </div>
 
+      {aviso && <p className="text-sm text-center text-[var(--c-rojo)] mb-3">{aviso}</p>}
+
       <Table columnas={columnas} filas={servicios} />
 
       <Modal
@@ -154,7 +177,7 @@ export default function Servicios() {
         titulo={editandoId ? tr.servicios.modalEditar : tr.servicios.modalNuevo}
         onClose={cerrarModal}
       >
-        <form onSubmit={guardar} noValidate>
+        <form onSubmit={validarYPedirConfirmacion} noValidate>
           <Input label={tr.servicios.nombre} value={form.nombre} onChange={cambiar("nombre", limpiarTexto)} />
           <Err msg={errores.nombre} />
 
@@ -179,6 +202,44 @@ export default function Servicios() {
             {editandoId ? tr.guardarCambios : tr.servicios.guardarNuevo}
           </Boton>
         </form>
+      </Modal>
+
+      {/* Modal de confirmación antes de guardar servicio */}
+      <Modal
+        abierto={confirmandoGuardar}
+        titulo={tr.servicios.confirmarGuardarTitulo}
+        onClose={() => setConfirmandoGuardar(false)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {editandoId ? tr.servicios.confirmarEditarMsg : tr.servicios.confirmarCrearMsg}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setConfirmandoGuardar(false)}>
+            {tr.cancelar}
+          </Boton>
+          <Boton className="flex-1" onClick={confirmarGuardarServicio}>
+            {tr.confirmar}
+          </Boton>
+        </div>
+      </Modal>
+
+      {/* Modal de confirmación antes de eliminar servicio */}
+      <Modal
+        abierto={Boolean(servicioAEliminar)}
+        titulo={tr.servicios.confirmarEliminarTitulo}
+        onClose={() => setServicioAEliminar(null)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {tr.servicios.confirmarEliminarMsg(servicioAEliminar?.nombre || "")}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setServicioAEliminar(null)}>
+            {tr.cancelar}
+          </Boton>
+          <Boton variante="peligro" className="flex-1" onClick={confirmarEliminarServicio}>
+            {tr.servicios.confirmarEliminarBtn}
+          </Boton>
+        </div>
       </Modal>
     </div>
   );

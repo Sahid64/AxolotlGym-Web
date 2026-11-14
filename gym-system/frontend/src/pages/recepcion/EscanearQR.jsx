@@ -4,6 +4,7 @@ import api from "../../api/api.js";
 import { useIdioma } from "../../context/IdiomaContext.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import Boton from "../../components/ui/Boton.jsx";
+import Modal from "../../components/ui/Modal.jsx";
 
 const tarjeta = "bg-[var(--c-tarjeta)] border border-[var(--c-borde)] rounded-lg p-6";
 const ID_LECTOR = "lector-qr";
@@ -14,18 +15,30 @@ function extraerMembresia(texto) {
   return partes[partes.length - 1].trim();
 }
 
+const formatearHora = (iso) =>
+  iso ? new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "";
+
 export default function EscanearQR() {
   const { tr, traducirMsg } = useIdioma();
   const [cliente, setCliente] = useState(null);
   const [aviso, setAviso] = useState(null); // { tipo: "ok" | "error", texto }
   const [estadoCamara, setEstadoCamara] = useState("apagada"); // apagada | iniciando | activa | error
 
+  // Clientes actualmente dentro del gimnasio y modal para sacar manualmente
+  const [clientesDentro, setClientesDentro] = useState([]);
+  const [fotos, setFotos] = useState({});
+  const fotosPedidasRef = useRef(new Set());
+  const [clienteASacar, setClienteASacar] = useState(null);
+  const [procesandoSalida, setProcesandoSalida] = useState(false);
+
   const scannerRef = useRef(null);
   const ultimoRef = useRef({ codigo: "", t: 0 });
 
-  // Apaga la camara al salir de la pantalla
   useEffect(() => {
+    cargarDentro();
+    const intervalo = setInterval(cargarDentro, 5000);
     return () => {
+      clearInterval(intervalo);
       detenerCamara();
     };
   }, []);
@@ -39,6 +52,54 @@ export default function EscanearQR() {
     }, 3500);
     return () => clearTimeout(t);
   }, [aviso]);
+
+  function pedirFotoCliente(id) {
+    if (!id || fotosPedidasRef.current.has(id)) return;
+    fotosPedidasRef.current.add(id);
+    api
+      .get(`/clientes/${id}/foto`)
+      .then(({ data: res }) => {
+        if (res?.foto) {
+          setFotos((prev) => ({ ...prev, [id]: res.foto }));
+        }
+      })
+      .catch(() => {});
+  }
+
+  async function cargarDentro() {
+    try {
+      const { data } = await api.get("/qr/dentro");
+      const lista = data.clientes || [];
+      setClientesDentro(lista);
+      lista.forEach((c) => pedirFotoCliente(c.id));
+    } catch {
+      /* mantener lista previa si falla momentaneamente */
+    }
+  }
+
+  async function confirmarSalidaManual() {
+    if (!clienteASacar) return;
+    setProcesandoSalida(true);
+    try {
+      const { data } = await api.post("/qr/salida-manual", {
+        clienteId: clienteASacar.id,
+      });
+      setAviso({
+        tipo: "ok",
+        texto: traducirMsg(data.mensaje) || tr.qr.salidaRegistrada,
+      });
+      setClienteASacar(null);
+      await cargarDentro();
+    } catch (err) {
+      setAviso({
+        tipo: "error",
+        texto: traducirMsg(err.response?.data?.mensaje) || tr.qr.errorRegistrar,
+      });
+      setClienteASacar(null);
+    } finally {
+      setProcesandoSalida(false);
+    }
+  }
 
   async function iniciarCamara() {
     setEstadoCamara("iniciando");
@@ -102,6 +163,7 @@ export default function EscanearQR() {
         setAviso({ tipo: "error", texto: tr.qr.codigoNoReconocido });
       } else {
         setCliente(encontrado);
+        pedirFotoCliente(encontrado.id);
       }
     } catch {
       setCliente(null);
@@ -124,6 +186,7 @@ export default function EscanearQR() {
         tipo: "ok",
         texto: traducirMsg(data.mensaje) || (tipo === "entrada" ? tr.qr.entradaRegistrada : tr.qr.salidaRegistrada),
       });
+      await cargarDentro();
     } catch (err) {
       setAviso({ tipo: "error", texto: traducirMsg(err.response?.data?.mensaje) || tr.qr.errorRegistrar });
     }
@@ -133,7 +196,69 @@ export default function EscanearQR() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-[var(--c-texto)] mb-6">{tr.qr.titulo}</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold text-[var(--c-texto)]">{tr.qr.titulo}</h1>
+        <span className="px-3.5 py-1 rounded-full border border-[var(--c-acento)] bg-[var(--c-acento-15)] text-sm font-bold text-[var(--c-acento)]">
+          {tr.qr.dentroBadge(clientesDentro.length)}
+        </span>
+      </div>
+
+      {/* ---------- Sección: Clientes actualmente dentro del gimnasio (salida manual) ---------- */}
+      <div className={`${tarjeta} mb-6`}>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm font-semibold text-[var(--c-texto)]">{tr.qr.dentroTitulo}</p>
+          <Boton variante="outline" onClick={cargarDentro}>
+            {tr.qr.actualizarLista}
+          </Boton>
+        </div>
+
+        {clientesDentro.length === 0 ? (
+          <p className="text-sm text-center text-[var(--c-texto-tenue)] py-6">
+            {tr.qr.sinClientesDentro}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {clientesDentro.map((c) => {
+              const ini = (c.nombre || "?").trim().charAt(0).toUpperCase();
+              const foto = fotos[c.id];
+              return (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-[var(--c-borde)] bg-[var(--c-campo)] p-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {foto ? (
+                      <img
+                        src={foto}
+                        alt={c.nombre}
+                        className="w-10 h-10 shrink-0 rounded-full border border-[var(--c-acento)] object-cover bg-[var(--c-fondo)]"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 shrink-0 rounded-full border border-[var(--c-acento)] bg-[var(--c-fondo)] flex items-center justify-center text-sm font-bold text-[var(--c-acento)]">
+                        {ini}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-[var(--c-texto)] truncate">{c.nombre}</p>
+                      <p className="text-xs text-[var(--c-texto-sec)]">
+                        {c.numMembresia}
+                        {c.desde ? ` · ${tr.qr.desdeHora(formatearHora(c.desde))}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <Boton
+                    variante="peligro"
+                    className="shrink-0 text-xs"
+                    onClick={() => setClienteASacar(c)}
+                  >
+                    {tr.qr.sacarManualBtn}
+                  </Boton>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* ---------- Camara ---------- */}
@@ -188,9 +313,17 @@ export default function EscanearQR() {
             </p>
           ) : (
             <div className="flex flex-col items-center text-center gap-3 py-2">
-              <div className="w-[72px] h-[72px] shrink-0 rounded-full border-2 border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-3xl font-bold text-[var(--c-acento)]">
-                {inicial}
-              </div>
+              {fotos[cliente.id] ? (
+                <img
+                  src={fotos[cliente.id]}
+                  alt={cliente.nombre}
+                  className="w-[72px] h-[72px] shrink-0 rounded-full border-2 border-[var(--c-acento)] object-cover bg-[var(--c-campo)]"
+                />
+              ) : (
+                <div className="w-[72px] h-[72px] shrink-0 rounded-full border-2 border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-3xl font-bold text-[var(--c-acento)]">
+                  {inicial}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="text-lg font-bold text-[var(--c-texto)] truncate">{cliente.nombre}</p>
                 <p className="text-sm text-[var(--c-texto-sec)] mt-1">{tr.qr.membresia}: {cliente.numMembresia}</p>
@@ -228,6 +361,35 @@ export default function EscanearQR() {
           </div>
         </div>
       </div>
+
+      {/* Modal de confirmación para registrar salida manual de un cliente dentro */}
+      <Modal
+        abierto={Boolean(clienteASacar)}
+        titulo={tr.qr.confirmarSalidaManualTitulo}
+        onClose={() => !procesandoSalida && setClienteASacar(null)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {tr.qr.confirmarSalidaManualMsg(clienteASacar?.nombre || "")}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton
+            variante="outline"
+            className="flex-1"
+            disabled={procesandoSalida}
+            onClick={() => setClienteASacar(null)}
+          >
+            {tr.cancelar}
+          </Boton>
+          <Boton
+            variante="peligro"
+            className="flex-1"
+            disabled={procesandoSalida}
+            onClick={confirmarSalidaManual}
+          >
+            {tr.qr.confirmarSalidaManualBtn}
+          </Boton>
+        </div>
+      </Modal>
     </div>
   );
 }

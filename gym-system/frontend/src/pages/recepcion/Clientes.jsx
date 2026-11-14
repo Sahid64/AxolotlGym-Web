@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../../api/api.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { useIdioma } from "../../context/IdiomaContext.jsx";
 import Table from "../../components/ui/Table.jsx";
 import Badge from "../../components/ui/Badge.jsx";
@@ -22,12 +23,18 @@ const limpiarTelefono = (v) => v.replace(/\D/g, "").slice(0, 10);
 const Err = ({ msg }) =>
   msg ? <p className="text-xs text-[var(--c-rojo)] -mt-2 mb-3">{msg}</p> : null;
 
-const formVacio = { nombre: "", apellido: "", telefono: "", correo: "", plan: "" };
+const METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia"];
+const formVacio = { nombre: "", apellido: "", telefono: "", correo: "", plan: "", metodo: "Efectivo" };
 
 export default function Clientes() {
-  const { tr, traducirMsg } = useIdioma();
+  const { usuario } = useAuth();
+  const { tr, traducirMsg, traducirPlan } = useIdioma();
+  const esEncargado = usuario?.rol === "encargado" || usuario?.rol === "dueno";
+
   const [clientes, setClientes] = useState([]);
-  const [planes, setPlanes] = useState([]); // vienen de tipos_membresia en Supabase
+  const [fotos, setFotos] = useState({});
+  const fotosPedidasRef = useRef(new Set());
+  const [planes, setPlanes] = useState([]); // vienen de tipos_membresia activos en Servicios
   const [aviso, setAviso] = useState("");
   const [buscar, setBuscar] = useState("");
   const [estado, setEstado] = useState("");
@@ -35,6 +42,25 @@ export default function Clientes() {
   const [editandoId, setEditandoId] = useState(null); // null = creando, id = editando
   const [form, setForm] = useState(formVacio);
   const [errores, setErrores] = useState({});
+
+  // Confirmación antes de crear/editar cliente
+  const [confirmandoGuardar, setConfirmandoGuardar] = useState(false);
+
+  // Modal de renovación (plan + método de pago + imagen de comprobante si es transferencia)
+  const [clienteARenovar, setClienteARenovar] = useState(null);
+  const [planRenovar, setPlanRenovar] = useState("");
+  const [metodoRenovar, setMetodoRenovar] = useState("Efectivo");
+  const [comprobanteRenovar, setComprobanteRenovar] = useState("");
+  const [nombreArchivoRenovar, setNombreArchivoRenovar] = useState("");
+  const [errorRenovar, setErrorRenovar] = useState("");
+  const [procesandoRenovar, setProcesandoRenovar] = useState(false);
+
+  // Modal de Recepción: Desactivar estatus y quitar plan
+  const [clienteADesactivar, setClienteADesactivar] = useState(null);
+
+  // Modal del Encargado: Dar de baja (Suspensión vs Derechos ARCO)
+  const [clienteABaja, setClienteABaja] = useState(null);
+  const [tipoBaja, setTipoBaja] = useState("suspension"); // "suspension" | "arco"
 
   const vNombre = (v, etiqueta) => {
     const t = v.trim();
@@ -55,19 +81,42 @@ export default function Clientes() {
   }, [buscar, estado]);
 
   useEffect(() => {
+    cargarPlanes();
+  }, []);
+
+  function cargarPlanes() {
     api
       .get("/clientes/planes")
       .then(({ data }) =>
         setPlanes(
-          data.planes.map((p) => ({ value: p.nombre.toLowerCase(), label: `${p.nombre} · $${p.precio}` }))
+          data.planes.map((p) => ({
+            value: p.nombre.toLowerCase(),
+            nombre: p.nombre,
+            precio: p.precio,
+          }))
         )
       )
       .catch(() => setPlanes([]));
-  }, []);
+  }
 
   async function cargar() {
     const { data } = await api.get("/clientes", { params: { buscar, estado } });
-    setClientes(data.clientes);
+    const lista = data.clientes || [];
+    setClientes(lista);
+
+    lista.forEach((c) => {
+      if (!fotosPedidasRef.current.has(c.id)) {
+        fotosPedidasRef.current.add(c.id);
+        api
+          .get(`/clientes/${c.id}/foto`)
+          .then(({ data: res }) => {
+            if (res?.foto) {
+              setFotos((prev) => ({ ...prev, [c.id]: res.foto }));
+            }
+          })
+          .catch(() => {});
+      }
+    });
   }
 
   // Actualiza un campo (limpiando lo inválido) y quita su error
@@ -78,9 +127,11 @@ export default function Clientes() {
   };
 
   function abrirNuevo() {
+    cargarPlanes();
     setEditandoId(null);
     setForm(formVacio);
     setErrores({});
+    setConfirmandoGuardar(false);
     setModalAbierto(true);
   }
 
@@ -92,8 +143,10 @@ export default function Clientes() {
       telefono: cliente.telefono ?? "",
       correo: cliente.correo ?? "",
       plan: cliente.plan ?? "",
+      metodo: "Efectivo",
     });
     setErrores({});
+    setConfirmandoGuardar(false);
     setModalAbierto(true);
   }
 
@@ -102,9 +155,11 @@ export default function Clientes() {
     setEditandoId(null);
     setForm(formVacio);
     setErrores({});
+    setConfirmandoGuardar(false);
   }
 
-  async function guardarCliente(e) {
+  // Paso 1: Validar formulario y pedir confirmación
+  function validarYPedirConfirmacion(e) {
     e.preventDefault();
 
     const errs = {
@@ -112,11 +167,16 @@ export default function Clientes() {
       apellido: vNombre(form.apellido, tr.clientes.apellido),
       telefono: vTelefono(form.telefono),
       correo: vCorreo(form.correo),
-      plan: form.plan ? "" : tr.val.seleccionaPlan,
+      plan: editandoId || form.plan ? "" : tr.val.seleccionaPlan,
     };
     setErrores(errs);
     if (Object.values(errs).some(Boolean)) return;
 
+    setConfirmandoGuardar(true);
+  }
+
+  // Paso 2: Ejecutar guardado tras confirmar
+  async function confirmarGuardarCliente() {
     const datos = {
       ...form,
       nombre: form.nombre.trim(),
@@ -133,6 +193,7 @@ export default function Clientes() {
         setAviso(traducirMsg(data.mensaje) || "");
       }
     } catch (err) {
+      setConfirmandoGuardar(false);
       setErrores((er) => ({ ...er, general: traducirMsg(err.response?.data?.mensaje) || tr.clientes.errorGuardar }));
       return;
     }
@@ -141,39 +202,171 @@ export default function Clientes() {
     cargar();
   }
 
-  async function renovar(id) {
-    try {
-      const { data } = await api.put(`/clientes/${id}/renovar`);
-      setAviso(traducirMsg(data.mensaje) || tr.clientes.membresiaRenovada);
-    } catch (err) {
-      setAviso(traducirMsg(err.response?.data?.mensaje) || tr.clientes.errorRenovar);
+  function abrirModalRenovar(cliente) {
+    cargarPlanes();
+    setClienteARenovar(cliente);
+    const planActual = (cliente.plan || "").toLowerCase();
+    const existePlan = planes.some((p) => p.value === planActual && p.value !== "visita");
+    const sugerido = existePlan
+      ? planActual
+      : planes.find((p) => p.value !== "visita")?.value || planes[0]?.value || "";
+    setPlanRenovar(sugerido);
+    setMetodoRenovar("Efectivo");
+    setComprobanteRenovar("");
+    setNombreArchivoRenovar("");
+    setErrorRenovar("");
+  }
+
+  function seleccionarImagenComprobante(e) {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    setNombreArchivoRenovar(archivo.name);
+    setErrorRenovar("");
+    const reader = new FileReader();
+    reader.onload = () => {
+      setComprobanteRenovar(String(reader.result || ""));
+    };
+    reader.readAsDataURL(archivo);
+  }
+
+  async function confirmarRenovacion() {
+    if (!clienteARenovar) return;
+    if (!planRenovar) {
+      setErrorRenovar(tr.val.seleccionaPlan);
+      return;
     }
+    if (metodoRenovar === "Transferencia" && !comprobanteRenovar) {
+      setErrorRenovar(tr.clientes.faltaComprobante);
+      return;
+    }
+
+    setProcesandoRenovar(true);
+    try {
+      const { data } = await api.put(`/clientes/${clienteARenovar.id}/renovar`, {
+        plan: planRenovar,
+        metodo: metodoRenovar,
+        comprobante: metodoRenovar === "Transferencia" ? comprobanteRenovar : undefined,
+      });
+      setAviso(traducirMsg(data.mensaje) || tr.clientes.membresiaRenovada);
+      setClienteARenovar(null);
+      cargar();
+    } catch (err) {
+      setErrorRenovar(traducirMsg(err.response?.data?.mensaje) || tr.clientes.errorRenovar);
+    } finally {
+      setProcesandoRenovar(false);
+    }
+  }
+
+  async function confirmarDesactivarCliente() {
+    if (!clienteADesactivar) return;
+    try {
+      const { data } = await api.put(`/clientes/${clienteADesactivar.id}/desactivar`);
+      setAviso(traducirMsg(data.mensaje) || "");
+    } catch (err) {
+      setAviso(traducirMsg(err.response?.data?.mensaje) || tr.clientes.errorBaja);
+    }
+    setClienteADesactivar(null);
     cargar();
   }
 
+  function abrirModalBaja(cliente) {
+    setClienteABaja(cliente);
+    setTipoBaja(cliente.estado === "activo" ? "suspension" : "arco");
+  }
+
+  async function confirmarBajaEncargado() {
+    if (!clienteABaja) return;
+    try {
+      const { data } = await api.delete(`/clientes/${clienteABaja.id}`, {
+        params: { tipo: tipoBaja },
+      });
+      setAviso(traducirMsg(data.mensaje) || "");
+    } catch (err) {
+      setAviso(traducirMsg(err.response?.data?.mensaje) || tr.clientes.errorBaja);
+    }
+    setClienteABaja(null);
+    cargar();
+  }
+
+  const nombreCliente = (c) => `${c?.nombre ?? ""} ${c?.apellido ?? ""}`.trim();
+
   const columnas = [
+    {
+      key: "foto",
+      label: tr.clientes.colFoto,
+      render: (f) => {
+        const nombreCompleto = nombreCliente(f);
+        const inicial = (nombreCompleto || "?").charAt(0).toUpperCase();
+        const foto = fotos[f.id];
+        return (
+          <div className="flex items-center justify-center">
+            {foto ? (
+              <img
+                src={foto}
+                alt={nombreCompleto}
+                className="w-10 h-10 shrink-0 rounded-full border border-[var(--c-acento)] object-cover bg-[var(--c-campo)]"
+              />
+            ) : (
+              <div className="w-10 h-10 shrink-0 rounded-full border border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-xs font-bold text-[var(--c-acento)]">
+                {inicial}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
     {
       key: "nombre",
       label: tr.clientes.colNombre,
-      render: (f) => `${f.nombre ?? ""} ${f.apellido ?? ""}`.trim(),
+      render: (f) => nombreCliente(f),
     },
     { key: "numMembresia", label: tr.clientes.colMembresia },
     {
       key: "plan",
       label: tr.clientes.colPlan,
-      render: (f) => <span className="capitalize">{f.plan}</span>,
+      render: (f) =>
+        f.plan ? (
+          <span className="capitalize">{traducirPlan(f.plan)}</span>
+        ) : (
+          <span className="text-xs text-[var(--c-texto-tenue)]">{tr.clientes.sinPlan}</span>
+        ),
     },
     { key: "fechaRegistro", label: tr.clientes.colFechaRegistro },
     { key: "estado", label: tr.clientes.colEstado, render: (f) => <Badge estado={f.estado} /> },
     {
       key: "acciones",
       label: tr.acciones,
-      render: (f) =>
-        f.estado === "activo" ? (
-          <Boton variante="outline" onClick={() => abrirEditar(f)}>{tr.editar}</Boton>
-        ) : (
-          <Boton variante="outline" onClick={() => renovar(f.id)}>{tr.renovar}</Boton>
-        ),
+      render: (f) => (
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          {f.estado === "activo" ? (
+            <>
+              <Boton variante="outline" onClick={() => abrirEditar(f)}>
+                {tr.editar}
+              </Boton>
+              {esEncargado ? (
+                <Boton variante="peligro" onClick={() => abrirModalBaja(f)}>
+                  {tr.darDeBaja}
+                </Boton>
+              ) : (
+                <Boton variante="peligro" onClick={() => setClienteADesactivar(f)}>
+                  {tr.desactivar}
+                </Boton>
+              )}
+            </>
+          ) : (
+            <>
+              <Boton variante="outline" onClick={() => abrirModalRenovar(f)}>
+                {tr.renovar}
+              </Boton>
+              {esEncargado && (
+                <Boton variante="peligro" onClick={() => abrirModalBaja(f)}>
+                  {tr.darDeBaja}
+                </Boton>
+              )}
+            </>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -202,16 +395,17 @@ export default function Clientes() {
         </select>
       </div>
 
-      {aviso && <p className="text-sm text-[var(--c-ambar-texto)] mb-3">{aviso}</p>}
+      {aviso && <p className="text-sm text-center text-[var(--c-ambar-texto)] mb-3">{aviso}</p>}
 
       <Table columnas={columnas} filas={clientes} />
 
+      {/* Modal para Crear / Editar Cliente */}
       <Modal
         abierto={modalAbierto}
         titulo={editandoId ? tr.clientes.modalEditar : tr.clientes.modalNuevo}
         onClose={cerrarModal}
       >
-        <form onSubmit={guardarCliente} noValidate>
+        <form onSubmit={validarYPedirConfirmacion} noValidate>
           <Input label={tr.clientes.nombre} value={form.nombre} onChange={cambiar("nombre", limpiarLetras)} />
           <Err msg={errores.nombre} />
 
@@ -230,30 +424,275 @@ export default function Clientes() {
           <Input label={tr.clientes.correo} type="email" value={form.correo} onChange={cambiar("correo")} />
           <Err msg={errores.correo} />
 
-          <div className="mb-3">
-            <label className="block text-sm text-[var(--c-texto-sec)] mb-1">{tr.clientes.plan}</label>
-            <select
-              value={form.plan}
-              onChange={cambiar("plan")}
-              className={`w-full ${campo} ${form.plan ? "text-[var(--c-texto)]" : "text-[var(--c-texto-tenue)]"}`}
-            >
-              <option value="" disabled className="bg-[var(--c-campo)] text-[var(--c-texto-tenue)]">
-                {tr.clientes.seleccionaPlan}
-              </option>
-              {planes.map((p) => (
-                <option key={p.value} value={p.value} className="bg-[var(--c-campo)] text-[var(--c-texto)]">
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Err msg={errores.plan} />
+          {!editandoId && (
+            <>
+              <div className="mb-3">
+                <label className="block text-sm text-[var(--c-texto-sec)] mb-1">{tr.clientes.plan}</label>
+                <select
+                  value={form.plan}
+                  onChange={cambiar("plan")}
+                  className={`w-full ${campo} ${form.plan ? "text-[var(--c-texto)]" : "text-[var(--c-texto-tenue)]"}`}
+                >
+                  <option value="" disabled className="bg-[var(--c-campo)] text-[var(--c-texto-tenue)]">
+                    {tr.clientes.seleccionaPlan}
+                  </option>
+                  {planes.map((p) => (
+                    <option key={p.value} value={p.value} className="bg-[var(--c-campo)] text-[var(--c-texto)]">
+                      {`${traducirPlan(p.nombre)} · $${p.precio}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Err msg={errores.plan} />
+
+              <div className="mb-3">
+                <label className="block text-sm text-[var(--c-texto-sec)] mb-1">{tr.clientes.metodoPago}</label>
+                <select
+                  value={form.metodo}
+                  onChange={cambiar("metodo")}
+                  className={`w-full ${campo}`}
+                >
+                  {METODOS_PAGO.map((m) => (
+                    <option key={m} value={m} className="bg-[var(--c-campo)] text-[var(--c-texto)]">
+                      {tr.clientes.metodos[m] || m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
           <Err msg={errores.general} />
 
           <Boton type="submit" className="w-full mt-2">
             {editandoId ? tr.guardarCambios : tr.clientes.guardarNuevo}
           </Boton>
         </form>
+      </Modal>
+
+      {/* Modal de confirmación antes de guardar cliente */}
+      <Modal
+        abierto={confirmandoGuardar}
+        titulo={tr.clientes.confirmarGuardarTitulo}
+        onClose={() => setConfirmandoGuardar(false)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {editandoId ? tr.clientes.confirmarEditarMsg : tr.clientes.confirmarCrearMsg}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setConfirmandoGuardar(false)}>
+            {tr.cancelar}
+          </Boton>
+          <Boton className="flex-1" onClick={confirmarGuardarCliente}>
+            {tr.confirmar}
+          </Boton>
+        </div>
+      </Modal>
+
+      {/* Modal de Renovación con Plan, Método de pago y Subida de Comprobante */}
+      <Modal
+        abierto={Boolean(clienteARenovar)}
+        titulo={tr.clientes.modalRenovar}
+        onClose={() => !procesandoRenovar && setClienteARenovar(null)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-4">
+          {tr.clientes.confirmarRenovarMsg(nombreCliente(clienteARenovar))}
+        </p>
+
+        <div className="mb-3">
+          <label className="block text-sm text-[var(--c-texto-sec)] mb-1">{tr.clientes.plan}</label>
+          <select
+            value={planRenovar}
+            onChange={(e) => {
+              setPlanRenovar(e.target.value);
+              setErrorRenovar("");
+            }}
+            className={`w-full ${campo}`}
+          >
+            <option value="" disabled className="bg-[var(--c-campo)] text-[var(--c-texto-tenue)]">
+              {tr.clientes.seleccionaPlan}
+            </option>
+            {planes.map((p) => (
+              <option key={p.value} value={p.value} className="bg-[var(--c-campo)] text-[var(--c-texto)]">
+                {`${traducirPlan(p.nombre)} · $${p.precio}`}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mb-3">
+          <label className="block text-sm text-[var(--c-texto-sec)] mb-1">{tr.clientes.metodoPago}</label>
+          <select
+            value={metodoRenovar}
+            onChange={(e) => {
+              setMetodoRenovar(e.target.value);
+              setErrorRenovar("");
+            }}
+            className={`w-full ${campo}`}
+          >
+            {METODOS_PAGO.map((m) => (
+              <option key={m} value={m} className="bg-[var(--c-campo)] text-[var(--c-texto)]">
+                {tr.clientes.metodos[m] || m}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {metodoRenovar === "Transferencia" && (
+          <div className="mb-3">
+            <label className="block text-sm text-[var(--c-texto-sec)] mb-1">
+              {tr.clientes.comprobanteLabel}
+            </label>
+            <label className="flex flex-col items-center justify-center w-full border border-dashed border-[var(--c-acento)] rounded-lg p-3 cursor-pointer bg-[var(--c-campo)] hover:bg-[var(--c-borde-20)] transition-colors text-center">
+              <span className="text-xs font-medium text-[var(--c-acento)]">
+                {comprobanteRenovar ? tr.clientes.cambiarComprobante : tr.clientes.subirComprobante}
+              </span>
+              {nombreArchivoRenovar && (
+                <span className="text-[11px] text-[var(--c-texto-sec)] mt-1 truncate max-w-full">
+                  {nombreArchivoRenovar}
+                </span>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={seleccionarImagenComprobante}
+                className="hidden"
+              />
+            </label>
+
+            {comprobanteRenovar && (
+              <div className="mt-2 rounded-lg overflow-hidden border border-[var(--c-borde)] bg-[var(--c-fondo)] max-h-44 flex items-center justify-center">
+                <img
+                  src={comprobanteRenovar}
+                  alt="Vista previa del comprobante"
+                  className="max-h-44 object-contain"
+                />
+              </div>
+            )}
+
+            <p className="text-xs text-center text-[var(--c-ambar-texto)] mt-2">
+              {tr.clientes.avisoTransferencia}
+            </p>
+          </div>
+        )}
+
+        <Err msg={errorRenovar} />
+
+        <div className="flex items-center justify-center gap-3 mt-4">
+          <Boton
+            variante="outline"
+            className="flex-1"
+            disabled={procesandoRenovar}
+            onClick={() => setClienteARenovar(null)}
+          >
+            {tr.cancelar}
+          </Boton>
+          <Boton
+            variante="exito"
+            className="flex-1"
+            disabled={procesandoRenovar}
+            onClick={confirmarRenovacion}
+          >
+            {tr.clientes.confirmarRenovarBtn}
+          </Boton>
+        </div>
+      </Modal>
+
+      {/* Modal de Recepción: Desactivar estatus y retirar plan */}
+      <Modal
+        abierto={Boolean(clienteADesactivar)}
+        titulo={tr.clientes.modalDesactivarTitulo}
+        onClose={() => setClienteADesactivar(null)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {tr.clientes.modalDesactivarMsg(nombreCliente(clienteADesactivar))}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setClienteADesactivar(null)}>
+            {tr.cancelar}
+          </Boton>
+          <Boton variante="peligro" className="flex-1" onClick={confirmarDesactivarCliente}>
+            {tr.clientes.confirmarDesactivarBtn}
+          </Boton>
+        </div>
+      </Modal>
+
+      {/* Modal del Encargado: Dar de baja (Suspensión vs Derechos ARCO) */}
+      <Modal
+        abierto={Boolean(clienteABaja)}
+        titulo={tr.clientes.modalBajaTitulo}
+        onClose={() => setClienteABaja(null)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-4">
+          {tr.clientes.modalBajaSubtitulo(nombreCliente(clienteABaja))}
+        </p>
+
+        <div className="space-y-3 mb-5">
+          {clienteABaja?.estado === "activo" && (
+            <label
+              className={`block rounded-lg border p-3 cursor-pointer transition-colors ${
+                tipoBaja === "suspension"
+                  ? "border-[var(--c-acento)] bg-[var(--c-acento-15)]"
+                  : "border-[var(--c-borde)] bg-[var(--c-campo)]"
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <input
+                  type="radio"
+                  name="tipoBaja"
+                  value="suspension"
+                  checked={tipoBaja === "suspension"}
+                  onChange={() => setTipoBaja("suspension")}
+                  className="mt-1 accent-[var(--c-acento)]"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-[var(--c-texto)]">
+                    {tr.clientes.bajaOpcionSuspensionTitulo}
+                  </p>
+                  <p className="text-xs text-[var(--c-texto-sec)] mt-1 leading-relaxed">
+                    {tr.clientes.bajaOpcionSuspensionDesc}
+                  </p>
+                </div>
+              </div>
+            </label>
+          )}
+
+          <label
+            className={`block rounded-lg border p-3 cursor-pointer transition-colors ${
+              tipoBaja === "arco"
+                ? "border-[var(--c-rojo)] bg-[var(--c-rojo-10)]"
+                : "border-[var(--c-borde)] bg-[var(--c-campo)]"
+            }`}
+          >
+            <div className="flex items-start gap-2.5">
+              <input
+                type="radio"
+                name="tipoBaja"
+                value="arco"
+                checked={tipoBaja === "arco"}
+                onChange={() => setTipoBaja("arco")}
+                className="mt-1 accent-[var(--c-rojo)]"
+              />
+              <div>
+                <p className="text-sm font-semibold text-[var(--c-rojo)]">
+                  {tr.clientes.bajaOpcionArcoTitulo}
+                </p>
+                <p className="text-xs text-[var(--c-texto-sec)] mt-1 leading-relaxed">
+                  {tr.clientes.bajaOpcionArcoDesc}
+                </p>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setClienteABaja(null)}>
+            {tr.cancelar}
+          </Boton>
+          <Boton variante="peligro" className="flex-1" onClick={confirmarBajaEncargado}>
+            {tr.clientes.confirmarBajaBtn}
+          </Boton>
+        </div>
       </Modal>
     </div>
   );

@@ -50,95 +50,90 @@ const TERMINOS = {
           "La visita da acceso solo el día en que se paga y no crea una cuenta. Se registran el nombre, el teléfono y un contacto de emergencia (nombre y teléfono) del visitante, y el pago, que se hace en efectivo o con tarjeta, se registra como ingreso. Recepción o el encargado piden una identificación oficial (INE) para comprobar la mayoría de edad y no se guarda nada de ella. No se registra el rostro del visitante. El aviso de privacidad está disponible en el establecimiento. Cada vez que entra, repite todo el proceso.",
       },
       {
-        titulo: "9. Congelamiento de membresía",
-        contenido:
-          "La membresía se puede congelar una sola vez por periodo, de 7 a 30 días, por salud o viaje. Se solicita en recepción antes de la fecha de inicio y los días congelados se suman al vencimiento. No aplica a visitas de un día.",
-      },
-      {
-        titulo: "10. Pagos",
+        titulo: "9. Pagos",
         contenido:
           "Se aceptan pagos en efectivo, con tarjeta, por transferencia y por depósito, en pesos mexicanos. Recepción confirma los pagos en efectivo y con tarjeta; el encargado confirma las transferencias y los depósitos, y también puede confirmar los otros dos. Un pago puede estar pendiente, aceptado o rechazado. Si pagas por transferencia o depósito, la aplicación te muestra los datos para hacerlo y tú envías el comprobante; el encargado lo revisa y, si lo acepta, se activa tu membresía. Si lo rechaza, verás el motivo y podrás enviarlo de nuevo. La aplicación no procesa cobros ni guarda números de tarjeta ni datos bancarios. Los servicios adicionales se cobran aparte.",
       },
       {
-        titulo: "11. Cancelaciones y reembolsos de membresías",
+        titulo: "10. Cancelaciones y reembolsos de membresías",
         contenido:
           "Tienes derecho a reembolso completo si cancelas dentro de las primeras 48 horas después de pagar y aún no has ingresado, o si hubo un error de cobro. En cualquier otro caso no hay reembolso y puedes usar la membresía hasta su vencimiento. El reembolso se hace por el mismo medio de pago en máximo 10 días hábiles. La cancelación se solicita en recepción y solo el encargado la autoriza.",
       },
       {
-        titulo: "12. Asesorías",
+        titulo: "11. Asesorías",
         contenido:
-          "Las asesorías se solicitan desde la aplicación y quedan pendientes hasta que recepción las aprueba o las rechaza. Puedes cancelarlas sin costo mientras estén pendientes. Cada instructor fija su costo y su máximo de clientes, y define contigo los días de asistencia y tu objetivo. La asesoría se paga del mismo modo que la membresía, como se explica en el punto 10.",
+          "Las asesorías se solicitan desde la aplicación y quedan pendientes hasta que recepción las aprueba o las rechaza. Puedes cancelarlas sin costo mientras estén pendientes. Cada instructor fija su costo y su máximo de clientes, y define contigo los días de asistencia y tu objetivo. La asesoría se paga del mismo modo que la membresía, como se explica en el punto 9.",
       },
       {
-        titulo: "13. Cancelación y reembolso de asesorías",
+        titulo: "12. Cancelación y reembolso de asesorías",
         contenido:
           "Si cancelas con al menos 24 horas de anticipación, el reembolso es completo y por el mismo medio de pago. Si cancelas con menos tiempo o no te presentas, no hay reembolso. Si el instructor cancela, tú eliges entre el reembolso o reprogramar.",
       },
       {
-        titulo: "14. Identidad y reconocimiento facial",
+        titulo: "13. Identidad y reconocimiento facial",
         contenido:
           "El acceso al gimnasio se verifica con reconocimiento facial. Recepción registra tu rostro y, a partir de entonces, tu entrada y tu salida se registran de forma automática cuando el sistema te reconoce. Recepción también puede registrar tu salida de forma manual sin usar el reconocimiento. Tus datos biométricos se usan solo para controlar el acceso. Al registrarte, la persona que te atiende te informa de esto y de tus datos de salud, y si no estás de acuerdo puedes cancelar el proceso antes de que se cree tu perfil y se guarden tus datos. Sin aceptar el reconocimiento facial no hay acceso; la única alternativa es la visita de un día.",
       },
       {
-        titulo: "15. Cliente registrado no reconocido",
+        titulo: "14. Cliente registrado no reconocido",
         contenido:
           "Si el sistema no te reconoce, recepción o el encargado verifican tu identidad con tu número de membresía y una identificación oficial, sin guardar nada de ella. El encargado autoriza el ingreso y este se registra manualmente. Si el problema persiste, se actualiza tu registro facial. Si no acreditas tu identidad, no entras ese día.",
       },
       {
-        titulo: "16. Suplantación",
+        titulo: "15. Suplantación",
         contenido:
           "Está prohibido entrar haciéndose pasar por otra persona. Se suspende la cuenta de quien suplanta y de quien presta la suya, se cancela la membresía sin reembolso y Axolotl puede presentar una denuncia. Recepción informa al encargado y él toma la decisión final.",
       },
       {
-        titulo: "17. Aforo y horarios de afluencia",
+        titulo: "16. Aforo y horarios de afluencia",
         contenido:
           "La aplicación muestra la cantidad de personas dentro del gimnasio, calculada con las entradas y salidas del día, y se reinicia cada día al cerrar el establecimiento. Puede haber un pequeño margen de error si alguien no marca su salida. Los horarios de menor afluencia se calculan con las entradas reales de las últimas 4 semanas.",
       },
       {
-        titulo: "18. Obligaciones del personal e instructores",
+        titulo: "17. Obligaciones del personal e instructores",
         contenido:
           "El personal y los instructores usan los datos de los clientes solo para su función, los mantienen confidenciales, no los copian ni los comparten, y no los usan con fines personales. Cuando registran una entrada o una salida de forma manual, verifican la identidad con honestidad. El incumplimiento puede llevar a la suspensión de su cuenta.",
       },
       {
-        titulo: "19. Normas de convivencia y seguridad",
+        titulo: "18. Normas de convivencia y seguridad",
         contenido:
           "Las normas internas del establecimiento están escritas y visibles en sus instalaciones. Incumplirlas puede llevar a una amonestación, a una suspensión temporal o a la baja.",
       },
       {
-        titulo: "20. Prohibiciones",
+        titulo: "19. Prohibiciones",
         contenido:
           "No se permite compartir la cuenta o la contraseña, entrar a funciones de otro rol, manipular el sistema o vulnerar su seguridad, ni usar la aplicación con fines ilícitos.",
       },
       {
-        titulo: "21. Suspensión y baja",
+        titulo: "20. Suspensión y baja",
         contenido:
           "La cuenta puede suspenderse por suplantación, incumplimiento de estos términos o conducta violenta u ofensiva. Una membresía vencida no suspende la cuenta; solo niega el acceso al gimnasio. El encargado da de baja al personal y sus datos se eliminan.",
       },
       {
-        titulo: "22. Salud y condición física",
+        titulo: "21. Salud y condición física",
         contenido:
           "La actividad física implica riesgos. Consulta a un médico antes de entrenar y avisa a tus instructores de cualquier condición relevante. Al darte de alta, recepción o el encargado registran tu fecha de nacimiento, tu tipo de sangre, tus alergias, padecimientos o lesiones y los medicamentos que tomas, solo para atender una emergencia; algunos de estos datos pueden quedar sin especificar. La aplicación no sustituye la opinión médica ni da seguimiento a tu progreso físico.",
       },
       {
-        titulo: "23. Disponibilidad del servicio",
+        titulo: "22. Disponibilidad del servicio",
         contenido:
           "La aplicación depende de internet, de la cámara del dispositivo y de un servicio en la nube, por lo que no se garantiza que funcione sin interrupciones.",
       },
       {
-        titulo: "24. Datos personales",
+        titulo: "23. Datos personales",
         contenido: "El tratamiento de tus datos personales se rige por la Política de Privacidad.",
       },
       {
-        titulo: "25. Avisos y modificaciones",
+        titulo: "24. Avisos y modificaciones",
         contenido:
           "Los avisos se envían por correo y, cuando aplique, por la aplicación y en el establecimiento. Los cambios a estos términos, a los precios o a las políticas se avisan con al menos 15 días naturales de anticipación, y los cierres o cambios de horario con al menos 3 días. Debes mantener tu correo actualizado.",
       },
       {
-        titulo: "26. Ley aplicable",
+        titulo: "25. Ley aplicable",
         contenido: "Estos términos se rigen por las leyes de los Estados Unidos Mexicanos.",
       },
       {
-        titulo: "27. Contacto",
+        titulo: "26. Contacto",
         contenido: "Teléfono: +52 314 139 7633. Correo: xcobian@ucol.mx.",
       },
     ],
@@ -188,95 +183,90 @@ const TERMINOS = {
           "A day visit grants access only on the day it is paid and does not create an account. The visitor's name, phone number, and emergency contact (name and phone) are recorded, and the payment—made in cash or by card—is recorded as revenue. Reception or the manager requests an official ID (INE) to verify legal age and nothing from it is stored. The visitor's face is not registered. The privacy notice is available at the facility. The entire process is repeated on each visit.",
       },
       {
-        titulo: "9. Membership freezing",
-        contenido:
-          "A membership may be frozen once per period, for 7 to 30 days, due to health or travel. It must be requested at reception before the start date, and the frozen days are added to the expiration date. Does not apply to single-day visits.",
-      },
-      {
-        titulo: "10. Payments",
+        titulo: "9. Payments",
         contenido:
           "Payments are accepted in cash, by card, bank transfer, and deposit, in Mexican pesos (MXN). Reception confirms cash and card payments; the manager confirms transfers and deposits, and can also confirm cash and card payments. A payment may be pending, accepted, or rejected. If paying by transfer or deposit, the application shows the account details and you upload the receipt; the manager reviews it and, if accepted, your membership is activated. If rejected, you will see the reason and can submit it again. The application does not process charges or store card numbers or bank data. Additional services are charged separately.",
       },
       {
-        titulo: "11. Membership cancellations and refunds",
+        titulo: "10. Membership cancellations and refunds",
         contenido:
           "You are entitled to a full refund if you cancel within the first 48 hours after payment and have not yet entered the facility, or if there was a billing error. In any other case, there is no refund and you may use the membership until it expires. Refunds are issued via the same payment method within a maximum of 10 business days. Cancellation must be requested at reception and is authorized only by the manager.",
       },
       {
-        titulo: "12. Coaching sessions",
+        titulo: "11. Coaching sessions",
         contenido:
-          "Coaching sessions are requested from the application and remain pending until reception approves or rejects them. You may cancel them free of charge while pending. Each instructor sets their fee and maximum number of clients, and defines your attendance days and goals with you. Coaching is paid in the same way as memberships, as explained in section 10.",
+          "Coaching sessions are requested from the application and remain pending until reception approves or rejects them. You may cancel them free of charge while pending. Each instructor sets their fee and maximum number of clients, and defines your attendance days and goals with you. Coaching is paid in the same way as memberships, as explained in section 9.",
       },
       {
-        titulo: "13. Coaching cancellation and refunds",
+        titulo: "12. Coaching cancellation and refunds",
         contenido:
           "If you cancel at least 24 hours in advance, a full refund is issued via the same payment method. If you cancel with less notice or do not show up, no refund is given. If the instructor cancels, you may choose between a refund or rescheduling.",
       },
       {
-        titulo: "14. Identity and facial recognition",
+        titulo: "13. Identity and facial recognition",
         contenido:
           "Gym access is verified through facial recognition. Reception registers your face and, from then on, your check-in and check-out are recorded automatically when the system recognizes you. Reception can also record your check-out manually without facial recognition. Your biometric data is used solely for access control. Upon registration, the staff member informs you of this and of your health data, and if you disagree, you may cancel the process before your profile is created and your data is stored. Without accepting facial recognition there is no membership access; the only alternative is a single-day visit.",
       },
       {
-        titulo: "15. Unrecognized registered client",
+        titulo: "14. Unrecognized registered client",
         contenido:
           "If the system does not recognize you, reception or the manager verifies your identity using your membership number and an official ID, without storing anything from it. The manager authorizes entry and it is recorded manually. If the issue persists, your facial record is updated. If you cannot verify your identity, entry is not permitted that day.",
       },
       {
-        titulo: "16. Impersonation",
+        titulo: "15. Impersonation",
         contenido:
           "Entering by impersonating another person is strictly prohibited. Both the impersonator's account and the account of the person who lent theirs will be suspended, the membership will be cancelled without refund, and Axolotl may file a legal complaint. Reception informs the manager, who makes the final decision.",
       },
       {
-        titulo: "17. Capacity and peak hours",
+        titulo: "16. Capacity and peak hours",
         contenido:
-          "The application displays the number of people inside the gym, calculated from the day's check-ins and check-outs, and resets daily at closing time. There may be a small margin of error if someone does not record their check-out. Off-peak hours are calculated from actual check-ins over the past 4 semanas.",
+          "The application displays the number of people inside the gym, calculated from the day's check-ins and check-outs, and resets daily at closing time. There may be a small margin of error if someone does not record their check-out. Off-peak hours are calculated from actual check-ins over the past 4 weeks.",
       },
       {
-        titulo: "18. Staff and instructor obligations",
+        titulo: "17. Staff and instructor obligations",
         contenido:
           "Staff and instructors use client data solely for their duties, keep it confidential, do not copy or share it, and do not use it for personal purposes. When manually recording a check-in or check-out, they verify identity honestly. Non-compliance may result in account suspension.",
       },
       {
-        titulo: "19. Code of conduct and safety rules",
+        titulo: "18. Code of conduct and safety rules",
         contenido:
           "Internal facility rules are posted and visible on the premises. Failure to comply may result in a warning, temporary suspension, or permanent termination.",
       },
       {
-        titulo: "20. Prohibitions",
+        titulo: "19. Prohibitions",
         contenido:
           "Sharing your account or password, accessing functions of another role, tampering with the system or compromising its security, or using the application for unlawful purposes is prohibited.",
       },
       {
-        titulo: "21. Suspension and termination",
+        titulo: "20. Suspension and termination",
         contenido:
           "An account may be suspended for impersonation, breach of these terms, or violent or offensive behavior. An expired membership does not suspend the account; it only denies access to the gym. The manager terminates staff accounts and their data is deleted.",
       },
       {
-        titulo: "22. Health and physical condition",
+        titulo: "21. Health and physical condition",
         contenido:
           "Physical activity involves risks. Consult a physician before training and inform your instructors of any relevant condition. Upon registration, reception or the manager records your date of birth, blood type, allergies, medical conditions or injuries, and medications solely to respond to an emergency; some of these items may remain unspecified. The application does not replace medical advice or track your physical progress.",
       },
       {
-        titulo: "23. Service availability",
+        titulo: "22. Service availability",
         contenido:
           "The application depends on an internet connection, device camera, and cloud service; therefore, uninterrupted operation is not guaranteed.",
       },
       {
-        titulo: "24. Personal data",
+        titulo: "23. Personal data",
         contenido: "The processing of your personal data is governed by the Privacy Policy.",
       },
       {
-        titulo: "25. Notices and modifications",
+        titulo: "24. Notices and modifications",
         contenido:
           "Notices are sent by email and, when applicable, through the application and at the facility. Changes to these terms, prices, or policies are notified at least 15 calendar days in advance, and closures or schedule changes at least 3 days in advance. You must keep your email address up to date.",
       },
       {
-        titulo: "26. Governing law",
+        titulo: "25. Governing law",
         contenido: "These terms are governed by the laws of the United Mexican States.",
       },
       {
-        titulo: "27. Contact",
+        titulo: "26. Contact",
         contenido: "Phone: +52 314 139 7633. Email: xcobian@ucol.mx.",
       },
     ],

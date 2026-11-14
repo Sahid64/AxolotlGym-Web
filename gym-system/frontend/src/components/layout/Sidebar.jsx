@@ -16,6 +16,7 @@ export default function Sidebar() {
       { to: "/recepcion", label: tr.menu.escanearQr, fin: true },
       { to: "/recepcion/clientes", label: tr.menu.clientes },
       { to: "/recepcion/solicitudes", label: tr.menu.solicitudes },
+      { to: "/recepcion/pagos", label: tr.menu.pagos },
     ],
     encargado: [
       { to: "/encargado", label: tr.menu.dashboard, fin: true },
@@ -23,6 +24,7 @@ export default function Sidebar() {
       { to: "/encargado/personal", label: tr.menu.personal },
       { to: "/encargado/servicios", label: tr.menu.servicios },
       { to: "/encargado/gastos", label: tr.menu.gastos },
+      { to: "/encargado/pagos", label: tr.menu.pagos },
       { to: "/encargado/reportes", label: tr.menu.reportes },
     ],
     dueno: [
@@ -31,6 +33,7 @@ export default function Sidebar() {
       { to: "/encargado/personal", label: tr.menu.personal },
       { to: "/encargado/servicios", label: tr.menu.servicios },
       { to: "/encargado/gastos", label: tr.menu.gastos },
+      { to: "/encargado/pagos", label: tr.menu.pagos },
       { to: "/encargado/reportes", label: tr.menu.reportes },
     ],
   };
@@ -72,15 +75,33 @@ export default function Sidebar() {
               </NavLink>
             ))}
 
-            {/* Opción de idioma en el sidebar */}
+            {/* Opción de Cambiar idioma con ícono de traducción */}
             <button
               type="button"
               onClick={alternarIdioma}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-colors border border-transparent text-[var(--c-texto-sec)] font-medium hover:bg-[var(--c-borde-20)]"
             >
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0 text-[var(--c-acento)]"
+              >
+                <path d="m5 8 6 6" />
+                <path d="m4 14 6-6 2-3" />
+                <path d="M2 5h12" />
+                <path d="M7 2h1" />
+                <path d="m22 22-5-10-5 10" />
+                <path d="M14 18h6" />
+              </svg>
               <span>{tr.etiquetaIdioma}</span>
-              <span className="px-2 py-0.5 rounded-full border border-[var(--c-acento)] bg-[var(--c-acento-15)] text-[11px] font-bold text-[var(--c-acento)]">
-                {idioma === "es" ? "ES → EN" : "EN → ES"}
+              <span className="px-2 py-0.5 rounded-full border border-[var(--c-acento)] bg-[var(--c-acento-15)] text-[10px] font-bold text-[var(--c-acento)]">
+                {idioma === "es" ? "ES" : "EN"}
               </span>
             </button>
           </nav>

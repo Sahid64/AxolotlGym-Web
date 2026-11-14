@@ -34,10 +34,15 @@ const vacio = { concepto: "", categoria: "", monto: "", fecha: "" };
 export default function Gastos() {
   const { tr, traducirMsg } = useIdioma();
   const [gastos, setGastos] = useState([]);
+  const [aviso, setAviso] = useState("");
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState(null); // null = creando, id = editando
   const [form, setForm] = useState(vacio);
   const [errores, setErrores] = useState({});
+
+  // Avisos de confirmación antes de guardar o eliminar
+  const [confirmandoGuardar, setConfirmandoGuardar] = useState(false);
+  const [gastoAEliminar, setGastoAEliminar] = useState(null);
 
   const vConcepto = (v) => {
     const t = v.trim();
@@ -85,6 +90,7 @@ export default function Gastos() {
     setEditandoId(null);
     setForm(vacio);
     setErrores({});
+    setConfirmandoGuardar(false);
     setModalAbierto(true);
   }
 
@@ -98,6 +104,7 @@ export default function Gastos() {
       fecha: gasto.fecha ? String(gasto.fecha).slice(0, 10) : "",
     });
     setErrores({});
+    setConfirmandoGuardar(false);
     setModalAbierto(true);
   }
 
@@ -106,9 +113,10 @@ export default function Gastos() {
     setEditandoId(null);
     setForm(vacio);
     setErrores({});
+    setConfirmandoGuardar(false);
   }
 
-  async function guardar(e) {
+  function validarYPedirConfirmacion(e) {
     e.preventDefault();
 
     const errs = {
@@ -120,6 +128,10 @@ export default function Gastos() {
     setErrores(errs);
     if (Object.values(errs).some(Boolean)) return;
 
+    setConfirmandoGuardar(true);
+  }
+
+  async function confirmarGuardarGasto() {
     const datos = {
       ...form,
       concepto: form.concepto.trim(),
@@ -132,7 +144,9 @@ export default function Gastos() {
       } else {
         await api.post("/gastos", datos);
       }
+      setAviso("");
     } catch (err) {
+      setConfirmandoGuardar(false);
       setErrores((er) => ({ ...er, general: traducirMsg(err.response?.data?.mensaje) || tr.gastos.errorGuardar }));
       return;
     }
@@ -141,8 +155,15 @@ export default function Gastos() {
     cargar();
   }
 
-  async function eliminar(id) {
-    await api.delete(`/gastos/${id}`);
+  async function confirmarEliminarGasto() {
+    if (!gastoAEliminar) return;
+    try {
+      await api.delete(`/gastos/${gastoAEliminar.id}`);
+      setAviso("");
+    } catch (err) {
+      setAviso(traducirMsg(err.response?.data?.mensaje) || tr.gastos.errorEliminar);
+    }
+    setGastoAEliminar(null);
     cargar();
   }
 
@@ -157,7 +178,7 @@ export default function Gastos() {
       render: (f) => (
         <div className="flex items-center justify-center gap-2">
           <Boton variante="outline" onClick={() => abrirEditar(f)}>{tr.editar}</Boton>
-          <Boton variante="peligro" onClick={() => eliminar(f.id)}>{tr.eliminar}</Boton>
+          <Boton variante="peligro" onClick={() => setGastoAEliminar(f)}>{tr.eliminar}</Boton>
         </div>
       ),
     },
@@ -170,6 +191,8 @@ export default function Gastos() {
         <Boton onClick={abrirNuevo}>{tr.gastos.nuevoBtn}</Boton>
       </div>
 
+      {aviso && <p className="text-sm text-center text-[var(--c-rojo)] mb-3">{aviso}</p>}
+
       <Table columnas={columnas} filas={gastos} />
 
       <Modal
@@ -177,7 +200,7 @@ export default function Gastos() {
         titulo={editandoId ? tr.gastos.modalEditar : tr.gastos.modalNuevo}
         onClose={cerrarModal}
       >
-        <form onSubmit={guardar} noValidate>
+        <form onSubmit={validarYPedirConfirmacion} noValidate>
           <Input label={tr.gastos.concepto} value={form.concepto} onChange={cambiar("concepto", limpiarTexto)} />
           <Err msg={errores.concepto} />
 
@@ -206,6 +229,44 @@ export default function Gastos() {
             {editandoId ? tr.guardarCambios : tr.gastos.guardarNuevo}
           </Boton>
         </form>
+      </Modal>
+
+      {/* Modal de confirmación antes de guardar gasto */}
+      <Modal
+        abierto={confirmandoGuardar}
+        titulo={tr.gastos.confirmarGuardarTitulo}
+        onClose={() => setConfirmandoGuardar(false)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {editandoId ? tr.gastos.confirmarEditarMsg : tr.gastos.confirmarCrearMsg}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setConfirmandoGuardar(false)}>
+            {tr.cancelar}
+          </Boton>
+          <Boton className="flex-1" onClick={confirmarGuardarGasto}>
+            {tr.confirmar}
+          </Boton>
+        </div>
+      </Modal>
+
+      {/* Modal de confirmación antes de eliminar gasto */}
+      <Modal
+        abierto={Boolean(gastoAEliminar)}
+        titulo={tr.gastos.confirmarEliminarTitulo}
+        onClose={() => setGastoAEliminar(null)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
+          {tr.gastos.confirmarEliminarMsg(gastoAEliminar?.concepto || "")}
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setGastoAEliminar(null)}>
+            {tr.cancelar}
+          </Boton>
+          <Boton variante="peligro" className="flex-1" onClick={confirmarEliminarGasto}>
+            {tr.gastos.confirmarEliminarBtn}
+          </Boton>
+        </div>
       </Modal>
     </div>
   );

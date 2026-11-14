@@ -3,15 +3,24 @@ import { supabase, consulta, manejar, numero } from "../data/supabase.js";
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const DIAS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]; // dia_semana 1..7 (ISO)
 
-// Tarjetas del dashboard (vista resumen_dashboard)
+// Tarjetas del dashboard (vista resumen_dashboard, descontando perfiles eliminados por ARCO)
 export const resumenDashboard = manejar(async (req, res) => {
-  const filas = await consulta(supabase.from("resumen_dashboard").select("*").limit(1));
+  const [filas, clientes] = await Promise.all([
+    consulta(supabase.from("resumen_dashboard").select("*").limit(1)),
+    consulta(supabase.from("clientes_lista").select("gmail, nombre, activa, estado")),
+  ]);
   const r = filas?.[0] || {};
+  const visibles = (clientes || []).filter(
+    (c) => !String(c.gmail || "").endsWith("@anonimo.axolotl") && c.nombre !== "Cliente Eliminado"
+  );
+  const activos = visibles.filter((c) => c.activa && c.estado === "ACTIVO").length;
+  const inactivos = visibles.length - activos;
+
   res.json({
     ok: true,
     resumen: {
-      clientesActivos: numero(r.activos),
-      clientesInactivos: numero(r.inactivos),
+      clientesActivos: visibles.length ? activos : numero(r.activos),
+      clientesInactivos: visibles.length ? inactivos : numero(r.inactivos),
       ingresosMes: numero(r.ingresos_mes),
     },
   });

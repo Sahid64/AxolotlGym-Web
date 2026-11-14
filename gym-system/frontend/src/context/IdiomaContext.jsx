@@ -6,7 +6,7 @@ const textos = {
   es: {
     // General / Tema / Idioma
     cambiarIdioma: "English",
-    etiquetaIdioma: "Idioma: Español",
+    etiquetaIdioma: "Cambiar idioma",
     temaOscuro: "Tema oscuro",
     temaClaro: "Tema claro",
     sinResultados: "Sin resultados",
@@ -14,10 +14,15 @@ const textos = {
     editar: "Editar",
     eliminar: "Eliminar",
     renovar: "Renovar",
+    desactivar: "Desactivar",
+    darDeBaja: "Dar de baja",
     guardarCambios: "Guardar cambios",
     cancelar: "Cancelar",
+    confirmar: "Confirmar",
     todos: "Todos",
     volverLogin: "← Volver al inicio de sesión",
+    mostrarPassword: "Mostrar contraseña",
+    ocultarPassword: "Ocultar contraseña",
 
     // Estados y Roles
     estados: {
@@ -67,9 +72,10 @@ const textos = {
 
     // Sidebar y Confirmación de Cierre de Sesión
     menu: {
-      escanearQr: "Escanear QR",
+      escanearQr: "Acceso",
       clientes: "Clientes",
       solicitudes: "Solicitudes",
+      pagos: "Pagos",
       dashboard: "Dashboard",
       personal: "Personal",
       servicios: "Servicios",
@@ -81,9 +87,9 @@ const textos = {
       confirmarSalidaBtn: "Sí, cerrar sesión",
     },
 
-    // Escanear QR
+    // Acceso y Clientes Dentro (Recepción)
     qr: {
-      titulo: "Escanear código QR",
+      titulo: "Control de acceso",
       escanearCodigo: "Escanear código",
       abriendoCamara: "Abriendo cámara...",
       camaraApagada: "La cámara está apagada",
@@ -104,6 +110,16 @@ const textos = {
       entradaRegistrada: "Entrada registrada",
       salidaRegistrada: "Salida registrada",
       errorRegistrar: "Error al registrar",
+      dentroTitulo: "Clientes dentro del gimnasio",
+      dentroBadge: (n) => `Dentro: ${n}`,
+      sinClientesDentro: "Actualmente no hay clientes registrados dentro del gimnasio.",
+      desdeHora: (h) => `Entrada: ${h}`,
+      sacarManualBtn: "Registrar salida",
+      confirmarSalidaManualTitulo: "Confirmar salida manual",
+      confirmarSalidaManualMsg: (nombre) =>
+        `¿Deseas registrar manualmente la salida de ${nombre} (por retiro de servicio o salida no marcada)?`,
+      confirmarSalidaManualBtn: "Sí, registrar salida",
+      actualizarLista: "Actualizar",
     },
 
     // Clientes
@@ -113,6 +129,8 @@ const textos = {
       buscarPlaceholder: "Buscar por nombre o membresía...",
       activo: "Activo",
       inactivo: "Inactivo",
+      sinPlan: "Sin plan",
+      colFoto: "Foto",
       colNombre: "Nombre",
       colMembresia: "Membresía",
       colPlan: "Plan",
@@ -120,16 +138,80 @@ const textos = {
       colEstado: "Estado",
       modalEditar: "Editar cliente",
       modalNuevo: "Nuevo cliente",
+      modalRenovar: "Renovar membresía",
       nombre: "Nombre",
       apellido: "Apellido",
       telefono: "Teléfono",
       correo: "Correo",
       plan: "Plan",
       seleccionaPlan: "Selecciona un plan",
+      metodoPago: "Método de pago",
+      metodos: {
+        Efectivo: "Efectivo",
+        Tarjeta: "Tarjeta",
+        Transferencia: "Transferencia",
+      },
+      comprobanteLabel: "Comprobante de transferencia (imagen)",
+      subirComprobante: "Seleccionar imagen del comprobante",
+      cambiarComprobante: "Cambiar imagen",
+      avisoTransferencia:
+        "Al pagar por transferencia, el comprobante será enviado a Pagos para que el Encargado lo acepte o rechace.",
+      faltaComprobante: "Debes subir la imagen del comprobante de transferencia",
       guardarNuevo: "Guardar cliente",
       errorGuardar: "No se pudo guardar",
       errorRenovar: "No se pudo renovar",
       membresiaRenovada: "Membresía renovada",
+      confirmarGuardarTitulo: "Confirmar datos del cliente",
+      confirmarCrearMsg: "¿Estás seguro de que deseas registrar a este nuevo cliente?",
+      confirmarEditarMsg: "¿Estás seguro de que deseas guardar los cambios de este cliente?",
+      confirmarRenovarMsg: (nombre) => `Selecciona el plan y método de pago para renovar a ${nombre}:`,
+      confirmarRenovarBtn: "Confirmar renovación",
+      // Recepción: Desactivar estatus y quitar plan
+      modalDesactivarTitulo: "Desactivar cliente y retirar plan",
+      modalDesactivarMsg: (nombre) =>
+        `¿Estás seguro de que deseas desactivar el estatus de ${nombre} y quitarle su plan activo? El cliente no podrá ingresar hasta renovar su membresía.`,
+      confirmarDesactivarBtn: "Sí, desactivar",
+      // Encargado: Dar de baja (Suspensión vs Derechos ARCO)
+      modalBajaTitulo: "Dar de baja al cliente",
+      modalBajaSubtitulo: (nombre) => `Selecciona el procedimiento de baja para ${nombre}:`,
+      bajaOpcionSuspensionTitulo: "Baja / Suspensión conforme a Términos y Políticas",
+      bajaOpcionSuspensionDesc:
+        "Se desactiva la cuenta y se retira su plan activo. Sus datos se eliminarán de forma automática tras 365 días de inactividad, conservando únicamente los registros de pagos con fines contables y fiscales.",
+      bajaOpcionArcoTitulo: "Derechos ARCO / Revocación de consentimiento (Eliminar datos)",
+      bajaOpcionArcoDesc:
+        "El cliente solicitó revocar su consentimiento y eliminar todos sus datos personales de inmediato. Solo se conservarán los registros de pagos con fines contables y fiscales.",
+      confirmarBajaBtn: "Confirmar baja",
+      errorBaja: "No se pudo procesar la baja del cliente",
+    },
+
+    // Pagos
+    pagos: {
+      titulo: "Pagos",
+      pendientes: (n) => `Pendientes de validar: ${n}`,
+      sinPendientes: "No hay pagos pendientes por validar.",
+      planLabel: "Plan",
+      enviadoEl: "enviado el",
+      cargandoComprobante: "Cargando comprobante…",
+      sinComprobante: "Sin comprobante (registrado en Recepción)",
+      errorComprobante: "No se pudo cargar el comprobante",
+      soloEncargadoImg: "Comprobante de pago (solo lo ve el Encargado)",
+      clicAmpliar: "Haz clic en la imagen para ampliarla",
+      rechazar: "Rechazar",
+      aceptar: "Aceptar",
+      soloEncargadoValidar: "Las transferencias las valida el Encargado.",
+      modalAceptarTitulo: "Aceptar pago",
+      modalRechazarTitulo: "Rechazar pago",
+      confirmarAceptarMsg: (monto, cliente) =>
+        `¿Validar el pago de ${monto} de ${cliente}? Se sumará a los ingresos de hoy y se activará su membresía.`,
+      confirmarRechazarMsg: (cliente) =>
+        `¿Rechazar el pago de ${cliente}? No se sumará a los ingresos y el cliente verá el motivo en su pestaña Pagos.`,
+      motivoRechazo: "Motivo del rechazo",
+      motivoPlaceholder: "Ej. El monto no coincide con el plan",
+      comprobanteModalTitulo: "Comprobante de pago",
+      pagoValidadoMsg: (cliente) => `Pago de ${cliente} validado. Su membresía quedó activa.`,
+      pagoRechazadoMsg: (cliente) => `Pago de ${cliente} rechazado.`,
+      errorCargar: "No se pudo cargar",
+      errorGuardar: "No se pudo guardar",
     },
 
     // Solicitudes
@@ -143,6 +225,12 @@ const textos = {
       aprobar: "Aprobar",
       rechazar: "Rechazar",
       sinAcciones: "Sin acciones",
+      confirmarAprobarTitulo: "Confirmar aprobación",
+      confirmarRechazarTitulo: "Confirmar rechazo",
+      confirmarAprobarMsg: (cliente, instructor) =>
+        `¿Estás seguro de que deseas aprobar la solicitud de asesoría de ${cliente} con ${instructor}?`,
+      confirmarRechazarMsg: (cliente, instructor) =>
+        `¿Estás seguro de que deseas rechazar la solicitud de asesoría de ${cliente} con ${instructor}?`,
     },
 
     // Dashboard
@@ -171,6 +259,8 @@ const textos = {
     personal: {
       titulo: "Personal",
       nuevoBtn: "+ Agregar personal",
+      buscarPlaceholder: "Buscar por nombre o correo...",
+      todosRoles: "Todos los roles",
       colNombre: "Nombre",
       colRol: "Rol",
       colCorreo: "Correo",
@@ -190,6 +280,12 @@ const textos = {
       guardarNuevo: "Agregar al personal",
       errorGuardar: "No se pudo guardar",
       errorEliminar: "No se pudo eliminar",
+      confirmarGuardarTitulo: "Confirmar datos del personal",
+      confirmarCrearMsg: "¿Estás seguro de que deseas agregar a esta persona al personal?",
+      confirmarEditarMsg: "¿Estás seguro de que deseas guardar los cambios de este integrante del personal?",
+      confirmarEliminarTitulo: "Confirmar eliminación",
+      confirmarEliminarMsg: (nombre) => `¿Estás seguro de que deseas eliminar a ${nombre} del personal?`,
+      confirmarEliminarBtn: "Sí, eliminar",
     },
 
     // Servicios
@@ -207,6 +303,14 @@ const textos = {
       precio: "Precio",
       guardarNuevo: "Guardar servicio",
       errorGuardar: "No se pudo guardar el servicio",
+      errorEliminar: "No se pudo eliminar el servicio",
+      confirmarGuardarTitulo: "Confirmar datos del servicio",
+      confirmarCrearMsg: "¿Estás seguro de que deseas registrar este nuevo servicio?",
+      confirmarEditarMsg: "¿Estás seguro de que deseas guardar los cambios de este servicio?",
+      confirmarEliminarTitulo: "Confirmar eliminación de servicio",
+      confirmarEliminarMsg: (nombre) =>
+        `¿Estás seguro de que deseas eliminar el servicio "${nombre}"? Ya no aparecerá al registrar o renovar clientes.`,
+      confirmarEliminarBtn: "Sí, eliminar",
     },
 
     // Gastos
@@ -225,6 +329,13 @@ const textos = {
       fecha: "Fecha",
       guardarNuevo: "Guardar gasto",
       errorGuardar: "No se pudo guardar el gasto",
+      errorEliminar: "No se pudo eliminar el gasto",
+      confirmarGuardarTitulo: "Confirmar datos del gasto",
+      confirmarCrearMsg: "¿Estás seguro de que deseas registrar este nuevo gasto?",
+      confirmarEditarMsg: "¿Estás seguro de que deseas guardar los cambios de este gasto?",
+      confirmarEliminarTitulo: "Confirmar eliminación de gasto",
+      confirmarEliminarMsg: (concepto) => `¿Estás seguro de que deseas eliminar el gasto "${concepto}"?`,
+      confirmarEliminarBtn: "Sí, eliminar",
     },
 
     // Reportes
@@ -264,7 +375,7 @@ const textos = {
   en: {
     // General / Theme / Language
     cambiarIdioma: "Español",
-    etiquetaIdioma: "Language: English",
+    etiquetaIdioma: "Change language",
     temaOscuro: "Dark theme",
     temaClaro: "Light theme",
     sinResultados: "No results",
@@ -272,10 +383,15 @@ const textos = {
     editar: "Edit",
     eliminar: "Delete",
     renovar: "Renew",
+    desactivar: "Deactivate",
+    darDeBaja: "Terminate",
     guardarCambios: "Save changes",
     cancelar: "Cancel",
+    confirmar: "Confirm",
     todos: "All",
     volverLogin: "← Back to sign in",
+    mostrarPassword: "Show password",
+    ocultarPassword: "Hide password",
 
     // Statuses and Roles
     estados: {
@@ -325,9 +441,10 @@ const textos = {
 
     // Sidebar & Logout confirmation
     menu: {
-      escanearQr: "Scan QR",
+      escanearQr: "Access",
       clientes: "Clients",
       solicitudes: "Requests",
+      pagos: "Payments",
       dashboard: "Dashboard",
       personal: "Staff",
       servicios: "Services",
@@ -339,9 +456,9 @@ const textos = {
       confirmarSalidaBtn: "Yes, sign out",
     },
 
-    // Scan QR
+    // Access & Clients Inside (Reception)
     qr: {
-      titulo: "Scan QR code",
+      titulo: "Access control",
       escanearCodigo: "Scan code",
       abriendoCamara: "Opening camera...",
       camaraApagada: "Camera is off",
@@ -362,6 +479,16 @@ const textos = {
       entradaRegistrada: "Check-in registered",
       salidaRegistrada: "Check-out registered",
       errorRegistrar: "Error registering",
+      dentroTitulo: "Clients currently inside the gym",
+      dentroBadge: (n) => `Inside: ${n}`,
+      sinClientesDentro: "There are currently no clients checked into the gym.",
+      desdeHora: (h) => `Checked in: ${h}`,
+      sacarManualBtn: "Check out",
+      confirmarSalidaManualTitulo: "Confirm manual check-out",
+      confirmarSalidaManualMsg: (nombre) =>
+        `Do you want to manually check out ${nombre} (due to service withdrawal or missed check-out)?`,
+      confirmarSalidaManualBtn: "Yes, check out",
+      actualizarLista: "Refresh",
     },
 
     // Clients
@@ -371,6 +498,8 @@ const textos = {
       buscarPlaceholder: "Search by name or membership...",
       activo: "Active",
       inactivo: "Inactive",
+      sinPlan: "No plan",
+      colFoto: "Photo",
       colNombre: "Name",
       colMembresia: "Membership",
       colPlan: "Plan",
@@ -378,16 +507,80 @@ const textos = {
       colEstado: "Status",
       modalEditar: "Edit client",
       modalNuevo: "New client",
+      modalRenovar: "Renew membership",
       nombre: "First name",
       apellido: "Last name",
       telefono: "Phone",
       correo: "Email",
       plan: "Plan",
       seleccionaPlan: "Select a plan",
+      metodoPago: "Payment method",
+      metodos: {
+        Efectivo: "Cash",
+        Tarjeta: "Card",
+        Transferencia: "Bank transfer",
+      },
+      comprobanteLabel: "Transfer receipt (image)",
+      subirComprobante: "Select receipt image",
+      cambiarComprobante: "Change image",
+      avisoTransferencia:
+        "When paying by transfer, the receipt will be sent to Payments for the Manager to accept or reject.",
+      faltaComprobante: "You must upload the transfer receipt image",
       guardarNuevo: "Save client",
       errorGuardar: "Could not save",
       errorRenovar: "Could not renew",
       membresiaRenovada: "Membership renewed",
+      confirmarGuardarTitulo: "Confirm client details",
+      confirmarCrearMsg: "Are you sure you want to register this new client?",
+      confirmarEditarMsg: "Are you sure you want to save the changes for this client?",
+      confirmarRenovarMsg: (nombre) => `Select the plan and payment method to renew ${nombre}:`,
+      confirmarRenovarBtn: "Confirm renewal",
+      // Reception: Deactivate status and remove plan
+      modalDesactivarTitulo: "Deactivate client and remove plan",
+      modalDesactivarMsg: (nombre) =>
+        `Are you sure you want to deactivate ${nombre}'s status and remove their active plan? The client will not be able to enter until renewing their membership.`,
+      confirmarDesactivarBtn: "Yes, deactivate",
+      // Manager: Terminate (Suspension vs ARCO Rights)
+      modalBajaTitulo: "Terminate client",
+      modalBajaSubtitulo: (nombre) => `Select the termination procedure for ${nombre}:`,
+      bajaOpcionSuspensionTitulo: "Termination / Suspension under Terms & Policies",
+      bajaOpcionSuspensionDesc:
+        "Deactivates the account and removes the active plan. Personal data will be automatically deleted after 365 days of inactivity, retaining only payment records for accounting and tax purposes.",
+      bajaOpcionArcoTitulo: "ARCO Rights / Consent Revocation (Delete personal data)",
+      bajaOpcionArcoDesc:
+        "The client requested to revoke consent and immediately delete all personal data. Only payment records will be retained for accounting and tax purposes.",
+      confirmarBajaBtn: "Confirm termination",
+      errorBaja: "Could not process client termination",
+    },
+
+    // Payments
+    pagos: {
+      titulo: "Payments",
+      pendientes: (n) => `Pending validation: ${n}`,
+      sinPendientes: "No pending payments to validate.",
+      planLabel: "Plan",
+      enviadoEl: "sent on",
+      cargandoComprobante: "Loading receipt…",
+      sinComprobante: "No receipt (registered at Reception)",
+      errorComprobante: "Could not load receipt",
+      soloEncargadoImg: "Payment receipt (visible only to Manager)",
+      clicAmpliar: "Click image to enlarge",
+      rechazar: "Reject",
+      aceptar: "Accept",
+      soloEncargadoValidar: "Bank transfers are validated by the Manager.",
+      modalAceptarTitulo: "Accept payment",
+      modalRechazarTitulo: "Reject payment",
+      confirmarAceptarMsg: (monto, cliente) =>
+        `Validate the payment of ${monto} from ${cliente}? It will be added to today's revenue and activate their membership.`,
+      confirmarRechazarMsg: (cliente) =>
+        `Reject the payment from ${cliente}? It will not be added to revenue and the client will see the reason in their Payments tab.`,
+      motivoRechazo: "Rejection reason",
+      motivoPlaceholder: "E.g. Amount does not match the plan",
+      comprobanteModalTitulo: "Payment receipt",
+      pagoValidadoMsg: (cliente) => `Payment from ${cliente} validated. Membership is now active.`,
+      pagoRechazadoMsg: (cliente) => `Payment from ${cliente} rejected.`,
+      errorCargar: "Could not load",
+      errorGuardar: "Could not save",
     },
 
     // Requests
@@ -401,6 +594,12 @@ const textos = {
       aprobar: "Approve",
       rechazar: "Reject",
       sinAcciones: "No actions",
+      confirmarAprobarTitulo: "Confirm approval",
+      confirmarRechazarTitulo: "Confirm rejection",
+      confirmarAprobarMsg: (cliente, instructor) =>
+        `Are you sure you want to approve the coaching request from ${cliente} with ${instructor}?`,
+      confirmarRechazarMsg: (cliente, instructor) =>
+        `Are you sure you want to reject the coaching request from ${cliente} with ${instructor}?`,
     },
 
     // Dashboard
@@ -429,6 +628,8 @@ const textos = {
     personal: {
       titulo: "Staff",
       nuevoBtn: "+ Add staff",
+      buscarPlaceholder: "Search by name or email...",
+      todosRoles: "All roles",
       colNombre: "Name",
       colRol: "Role",
       colCorreo: "Email",
@@ -448,6 +649,12 @@ const textos = {
       guardarNuevo: "Add staff",
       errorGuardar: "Could not save",
       errorEliminar: "Could not delete",
+      confirmarGuardarTitulo: "Confirm staff details",
+      confirmarCrearMsg: "Are you sure you want to add this person to the staff?",
+      confirmarEditarMsg: "Are you sure you want to save the changes for this staff member?",
+      confirmarEliminarTitulo: "Confirm deletion",
+      confirmarEliminarMsg: (nombre) => `Are you sure you want to remove ${nombre} from the staff?`,
+      confirmarEliminarBtn: "Yes, delete",
     },
 
     // Services
@@ -465,6 +672,14 @@ const textos = {
       precio: "Price",
       guardarNuevo: "Save service",
       errorGuardar: "Could not save service",
+      errorEliminar: "Could not delete service",
+      confirmarGuardarTitulo: "Confirm service details",
+      confirmarCrearMsg: "Are you sure you want to register this new service?",
+      confirmarEditarMsg: "Are you sure you want to save the changes for this service?",
+      confirmarEliminarTitulo: "Confirm service deletion",
+      confirmarEliminarMsg: (nombre) =>
+        `Are you sure you want to delete the service "${nombre}"? It will no longer appear when registering or renewing clients.`,
+      confirmarEliminarBtn: "Yes, delete",
     },
 
     // Expenses
@@ -483,6 +698,13 @@ const textos = {
       fecha: "Date",
       guardarNuevo: "Save expense",
       errorGuardar: "Could not save expense",
+      errorEliminar: "Could not delete expense",
+      confirmarGuardarTitulo: "Confirm expense details",
+      confirmarCrearMsg: "Are you sure you want to record this new expense?",
+      confirmarEditarMsg: "Are you sure you want to save the changes for this expense?",
+      confirmarEliminarTitulo: "Confirm expense deletion",
+      confirmarEliminarMsg: (concepto) => `Are you sure you want to delete the expense "${concepto}"?`,
+      confirmarEliminarBtn: "Yes, delete",
     },
 
     // Reports
@@ -531,7 +753,15 @@ function traducirMensajeServidor(msg, idioma) {
     "Membresia o contraseña incorrectos": "Incorrect membership or password",
     "Cliente registrado. Contraseña temporal: Axolotl2026": "Client registered. Temporary password: Axolotl2026",
     "Membresia renovada": "Membership renewed",
+    "Comprobante enviado. Pendiente de validación por el Encargado":
+      "Receipt submitted. Pending validation by the Manager",
+    "Falta la imagen del comprobante": "Receipt image is required",
     "Cliente desactivado": "Client deactivated",
+    "Cliente desactivado y plan retirado": "Client deactivated and plan removed",
+    "Cliente dado de baja conforme a términos y políticas":
+      "Client terminated in accordance with terms and policies",
+    "Datos personales del cliente eliminados por Derechos ARCO":
+      "Client personal data deleted under ARCO Rights",
     "Se agrego al personal": "Staff member added",
     "Se agrego al personal. Contraseña temporal: Axolotl2026": "Staff member added. Temporary password: Axolotl2026",
     "Se elimino del personal": "Staff member removed",
@@ -541,6 +771,15 @@ function traducirMensajeServidor(msg, idioma) {
     "Movimiento repetido, espera unos segundos": "Repeated action, please wait a few seconds",
     "Membresia no encontrada": "Membership not found",
     "Codigo no valido": "Invalid code",
+    "Cliente no valido": "Invalid client",
+    "Cliente no encontrado": "Client not found",
+    "Plan no válido": "Invalid plan",
+    "Pago validado": "Payment validated",
+    "Pago rechazado": "Payment rejected",
+    "Escribe el motivo del rechazo": "Please enter the rejection reason",
+    "Servicio eliminado": "Service deleted",
+    "Gasto eliminado": "Expense deleted",
+    "El cliente no tiene plan previo; indica uno": "Client has no previous plan; please select one",
   };
   if (exactos[texto]) return exactos[texto];
 
@@ -578,8 +817,50 @@ export function IdiomaProvider({ children }) {
   const tr = textos[idioma] || textos.es;
   const traducirMsg = (msg) => traducirMensajeServidor(msg, idioma);
 
+  // Traduce nombres de planes/servicios comunes al inglés cuando idioma === "en"
+  const traducirPlan = (plan) => {
+    if (!plan || idioma !== "en") return plan;
+    const mapa = {
+      mensualidad: "Monthly",
+      mensual: "Monthly",
+      trimestral: "Quarterly",
+      semestral: "Semiannual",
+      anual: "Annual",
+      anualidad: "Annual",
+      semanal: "Weekly",
+      quincenal: "Biweekly",
+      visita: "Day pass",
+    };
+    const clave = String(plan).trim().toLowerCase();
+    return mapa[clave] || plan;
+  };
+
+  // Traduce duraciones como "30 días", "1 día", "3 meses", "1 año" al inglés
+  const traducirDuracion = (dur) => {
+    if (!dur || idioma !== "en") return dur;
+    return String(dur)
+      .replace(/\bdías\b|\bdias\b/gi, "days")
+      .replace(/\bdía\b|\bdia\b/gi, "day")
+      .replace(/\bmeses\b/gi, "months")
+      .replace(/\bmes\b/gi, "month")
+      .replace(/\bsemanas\b/gi, "weeks")
+      .replace(/\bsemana\b/gi, "week")
+      .replace(/\baños\b|\banos\b/gi, "years")
+      .replace(/\baño\b|\bano\b/gi, "year");
+  };
+
   return (
-    <IdiomaContext.Provider value={{ idioma, esIngles: idioma === "en", alternarIdioma, tr, traducirMsg }}>
+    <IdiomaContext.Provider
+      value={{
+        idioma,
+        esIngles: idioma === "en",
+        alternarIdioma,
+        tr,
+        traducirMsg,
+        traducirPlan,
+        traducirDuracion,
+      }}
+    >
       {children}
     </IdiomaContext.Provider>
   );

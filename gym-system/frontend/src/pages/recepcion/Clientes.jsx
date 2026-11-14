@@ -349,10 +349,10 @@ export default function Clientes() {
               <img
                 src={foto}
                 alt={nombreCompleto}
-                className="w-10 h-10 shrink-0 rounded-full border border-[var(--c-acento)] object-cover bg-[var(--c-campo)]"
+                className="w-9 h-9 shrink-0 rounded-full border border-[var(--c-acento)] object-cover bg-[var(--c-campo)]"
               />
             ) : (
-              <div className="w-10 h-10 shrink-0 rounded-full border border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-xs font-bold text-[var(--c-acento)]">
+              <div className="w-9 h-9 shrink-0 rounded-full border border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-xs font-bold text-[var(--c-acento)]">
                 {inicial}
               </div>
             )}
@@ -365,62 +365,70 @@ export default function Clientes() {
       label: tr.clientes.colNombre,
       render: (f) => nombreCliente(f),
     },
-    { key: "numMembresia", label: tr.clientes.colMembresia },
+    {
+      key: "numMembresia",
+      label: tr.clientes.colMembresia,
+      render: (f) => <span className="whitespace-nowrap">{f.numMembresia}</span>,
+    },
     {
       key: "plan",
       label: tr.clientes.colPlan,
       render: (f) =>
         f.plan ? (
-          <span className="capitalize">{traducirPlan(f.plan)}</span>
+          <span className="capitalize whitespace-nowrap">{traducirPlan(f.plan)}</span>
         ) : (
-          <span className="text-xs text-[var(--c-texto-tenue)]">{tr.clientes.sinPlan}</span>
+          <span className="text-xs text-[var(--c-texto-tenue)] whitespace-nowrap">{tr.clientes.sinPlan}</span>
         ),
     },
-    { key: "fechaRegistro", label: tr.clientes.colFechaRegistro },
+    {
+      key: "fechaRegistro",
+      label: tr.clientes.colFechaRegistro,
+      render: (f) => <span className="whitespace-nowrap">{f.fechaRegistro}</span>,
+    },
     { key: "estado", label: tr.clientes.colEstado, render: (f) => <Badge estado={f.estado} /> },
     {
       key: "rostro",
       label: tr.facial.colRostro,
       render: (f) =>
         conRostro.has(f.id) ? (
-          <span className="text-[var(--c-verde-texto)] font-bold">✓ {tr.facial.registrado}</span>
+          <span className="text-[var(--c-verde-texto)] font-bold whitespace-nowrap">✓ {tr.facial.registrado}</span>
         ) : (
-          <span className="text-[var(--c-texto-tenue)]">{tr.facial.sinRostro}</span>
+          <span className="text-[var(--c-texto-tenue)] whitespace-nowrap">{tr.facial.sinRostro}</span>
         ),
     },
     {
       key: "acciones",
       label: tr.acciones,
       render: (f) => (
-        <div className="flex items-center justify-center gap-2 flex-wrap">
+        <div className="flex items-center justify-center gap-1.5 flex-nowrap">
           {f.estado === "activo" ? (
             <>
-              <Boton variante="outline" onClick={() => abrirEditar(f)}>
+              <Boton variante="outline" className="!px-2.5 !py-1 text-xs" onClick={() => abrirEditar(f)}>
                 {tr.editar}
               </Boton>
-              <Boton variante="outline" onClick={() => abrirRostro(f)}>
+              <Boton variante="outline" className="!px-2.5 !py-1 text-xs" onClick={() => abrirRostro(f)}>
                 {conRostro.has(f.id) ? tr.facial.actualizarRostro : tr.facial.registrarRostro}
               </Boton>
               {esEncargado ? (
-                <Boton variante="peligro" onClick={() => abrirModalBaja(f)}>
+                <Boton variante="peligro" className="!px-2.5 !py-1 text-xs" onClick={() => abrirModalBaja(f)}>
                   {tr.darDeBaja}
                 </Boton>
               ) : (
-                <Boton variante="peligro" onClick={() => setClienteADesactivar(f)}>
+                <Boton variante="peligro" className="!px-2.5 !py-1 text-xs" onClick={() => setClienteADesactivar(f)}>
                   {tr.desactivar}
                 </Boton>
               )}
             </>
           ) : (
             <>
-              <Boton variante="outline" onClick={() => abrirModalRenovar(f)}>
+              <Boton variante="outline" className="!px-2.5 !py-1 text-xs" onClick={() => abrirModalRenovar(f)}>
                 {tr.renovar}
               </Boton>
-              <Boton variante="outline" onClick={() => abrirRostro(f)}>
+              <Boton variante="outline" className="!px-2.5 !py-1 text-xs" onClick={() => abrirRostro(f)}>
                 {conRostro.has(f.id) ? tr.facial.actualizarRostro : tr.facial.registrarRostro}
               </Boton>
               {esEncargado && (
-                <Boton variante="peligro" onClick={() => abrirModalBaja(f)}>
+                <Boton variante="peligro" className="!px-2.5 !py-1 text-xs" onClick={() => abrirModalBaja(f)}>
                   {tr.darDeBaja}
                 </Boton>
               )}

@@ -72,6 +72,7 @@ const textos = {
 
     // Sidebar y Confirmación de Cierre de Sesión
     menu: {
+      accesoFacial: "Reconocimiento facial",
       escanearQr: "Acceso",
       clientes: "Clientes",
       solicitudes: "Solicitudes",
@@ -87,39 +88,55 @@ const textos = {
       confirmarSalidaBtn: "Sí, cerrar sesión",
     },
 
-    // Acceso y Clientes Dentro (Recepción)
-    qr: {
-      titulo: "Control de acceso",
-      escanearCodigo: "Escanear código",
-      abriendoCamara: "Abriendo cámara...",
+    // Reconocimiento facial (toma de lista) y clientes dentro
+    facial: {
+      titulo: "Reconocimiento facial",
+      subtitulo: "Toma de lista: el cliente se coloca frente a la cámara",
+      cargando: "Abriendo cámara y cargando el reconocimiento facial...",
       camaraApagada: "La cámara está apagada",
       encenderCamara: "Encender cámara",
       errorCamara: "No se pudo abrir la cámara. Revisa que el navegador tenga permiso para usarla.",
+      errorModelos: "No se pudo cargar el reconocimiento facial. Revisa tu conexión a internet.",
       reintentar: "Reintentar",
       apagarCamara: "Apagar cámara",
-      infoCliente: "Información del cliente",
-      instruccionEscaneo: "Escanea un código para ver la información del cliente",
+      indicaciones: {
+        posicion: "Colócate frente a la cámara",
+        unaPersona: "Solo una persona frente a la cámara",
+        acercate: "Acércate un poco más",
+        centra: "Centra tu rostro en el óvalo",
+        mira: "Mira de frente a la cámara",
+        quieto: "No te muevas...",
+        verificando: "Verificando...",
+        listoRetirate: "¡Listo! Puedes pasar",
+      },
+      ultimoRegistro: "Último registro",
+      instruccion: "Cuando un cliente se coloque frente a la cámara, aquí aparecerán sus datos",
       membresia: "Membresía",
       estado: "Estado",
-      registro: "Registro",
       entrada: "Entrada",
       salida: "Salida",
-      codigoNoReconocido: "Código no reconocido",
-      errorConsulta: "No se pudo consultar al cliente",
-      membresiaVencida: "Membresía vencida. Pasa a renovar",
-      entradaRegistrada: "Entrada registrada",
-      salidaRegistrada: "Salida registrada",
+      correccionManual: "¿Se registró mal? Corrige manualmente:",
       errorRegistrar: "Error al registrar",
-      dentroTitulo: "Clientes dentro del gimnasio",
-      dentroBadge: (n) => `Dentro: ${n}`,
-      sinClientesDentro: "Actualmente no hay clientes registrados dentro del gimnasio.",
-      desdeHora: (h) => `Entrada: ${h}`,
+      salidaRegistrada: "Salida registrada",
+      asistenciaHoy: "Asistencia de hoy (dentro del gym)",
+      dentroAhora: (n) => `${n} dentro`,
+      nadieDentro: "Todavía no hay nadie dentro",
+      desde: "desde",
       sacarManualBtn: "Registrar salida",
       confirmarSalidaManualTitulo: "Confirmar salida manual",
       confirmarSalidaManualMsg: (nombre) =>
         `¿Deseas registrar manualmente la salida de ${nombre} (por retiro de servicio o salida no marcada)?`,
       confirmarSalidaManualBtn: "Sí, registrar salida",
-      actualizarLista: "Actualizar",
+      // Registro de rostro en Clientes
+      colRostro: "Rostro",
+      registrado: "Registrado",
+      sinRostro: "Sin registrar",
+      registrarRostro: "Registrar rostro",
+      actualizarRostro: "Actualizar rostro",
+      instruccionRegistro:
+        "Pide al cliente que mire de frente a la cámara, sin lentes oscuros ni gorra, hasta que se llene la barra.",
+      rostroRegistrado: "Rostro registrado",
+      errorRegistrarRostro: "No se pudo registrar el rostro",
     },
 
     // Clientes
@@ -441,6 +458,7 @@ const textos = {
 
     // Sidebar & Logout confirmation
     menu: {
+      accesoFacial: "Face recognition",
       escanearQr: "Access",
       clientes: "Clients",
       solicitudes: "Requests",
@@ -456,39 +474,55 @@ const textos = {
       confirmarSalidaBtn: "Yes, sign out",
     },
 
-    // Access & Clients Inside (Reception)
-    qr: {
-      titulo: "Access control",
-      escanearCodigo: "Scan code",
-      abriendoCamara: "Opening camera...",
+    // Face recognition (attendance) & clients inside
+    facial: {
+      titulo: "Face recognition",
+      subtitulo: "Attendance: the client stands in front of the camera",
+      cargando: "Opening camera and loading face recognition...",
       camaraApagada: "Camera is off",
       encenderCamara: "Turn on camera",
       errorCamara: "Could not open camera. Check browser permissions.",
+      errorModelos: "Could not load face recognition. Check your internet connection.",
       reintentar: "Retry",
       apagarCamara: "Turn off camera",
-      infoCliente: "Client information",
-      instruccionEscaneo: "Scan a code to view client information",
+      indicaciones: {
+        posicion: "Stand in front of the camera",
+        unaPersona: "Only one person in front of the camera",
+        acercate: "Come a little closer",
+        centra: "Center your face in the oval",
+        mira: "Look straight at the camera",
+        quieto: "Hold still...",
+        verificando: "Verifying...",
+        listoRetirate: "Done! You can go in",
+      },
+      ultimoRegistro: "Last record",
+      instruccion: "When a client stands in front of the camera, their details will appear here",
       membresia: "Membership",
       estado: "Status",
-      registro: "Registered",
       entrada: "Check-in",
       salida: "Check-out",
-      codigoNoReconocido: "Unrecognized code",
-      errorConsulta: "Could not fetch client",
-      membresiaVencida: "Expired membership. Please renew",
-      entradaRegistrada: "Check-in registered",
-      salidaRegistrada: "Check-out registered",
+      correccionManual: "Wrong record? Fix it manually:",
       errorRegistrar: "Error registering",
-      dentroTitulo: "Clients currently inside the gym",
-      dentroBadge: (n) => `Inside: ${n}`,
-      sinClientesDentro: "There are currently no clients checked into the gym.",
-      desdeHora: (h) => `Checked in: ${h}`,
+      salidaRegistrada: "Check-out registered",
+      asistenciaHoy: "Today's attendance (inside the gym)",
+      dentroAhora: (n) => `${n} inside`,
+      nadieDentro: "Nobody is inside yet",
+      desde: "since",
       sacarManualBtn: "Check out",
       confirmarSalidaManualTitulo: "Confirm manual check-out",
       confirmarSalidaManualMsg: (nombre) =>
         `Do you want to manually check out ${nombre} (due to service withdrawal or missed check-out)?`,
       confirmarSalidaManualBtn: "Yes, check out",
-      actualizarLista: "Refresh",
+      // Face registration in Clients
+      colRostro: "Face",
+      registrado: "Registered",
+      sinRostro: "Not registered",
+      registrarRostro: "Register face",
+      actualizarRostro: "Update face",
+      instruccionRegistro:
+        "Ask the client to look straight at the camera, without sunglasses or a cap, until the bar fills up.",
+      rostroRegistrado: "Face registered",
+      errorRegistrarRostro: "Could not register the face",
     },
 
     // Clients
@@ -780,6 +814,9 @@ function traducirMensajeServidor(msg, idioma) {
     "Servicio eliminado": "Service deleted",
     "Gasto eliminado": "Expense deleted",
     "El cliente no tiene plan previo; indica uno": "Client has no previous plan; please select one",
+    "Rostro no reconocido": "Face not recognized",
+    "Rostro registrado": "Face registered",
+    "Vector facial inválido": "Invalid face data",
   };
   if (exactos[texto]) return exactos[texto];
 
@@ -795,6 +832,9 @@ function traducirMensajeServidor(msg, idioma) {
 
   m = /^(.+) no tiene una entrada registrada hoy$/i.exec(texto);
   if (m) return `${m[1]} has no check-in registered today`;
+
+  m = /^Este rostro ya está registrado para (.+)$/i.exec(texto);
+  if (m) return `This face is already registered to ${m[1]}`;
 
   m = /^Cuenta bloqueada temporalmente\. Intenta de nuevo en (\d+) min$/i.exec(texto);
   if (m) return `Account temporarily locked. Try again in ${m[1]} min`;

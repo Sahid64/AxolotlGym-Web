@@ -49,8 +49,14 @@ La web usa la misma base de Supabase que la app Android: se entra con las cuenta
 **Login** (`/login`) — correo y contraseña, redirige segun el rol.
 
 **Recepcion**
-- `/recepcion` — vista principal para escanear QR + grafica de ocupacion por hora (el lector de QR es un placeholder, ahí conectas tu libreria, ej. `html5-qrcode`).
-- `/recepcion/clientes` — tabla con buscador, filtro por estado, boton renovar y formulario para nuevo cliente.
+- `/recepcion` — **toma de lista con reconocimiento facial**: el cliente se para frente a la cámara y se registra su entrada (o salida si ya estaba dentro). Muestra el último registro, botones para corregir a mano y la lista de quién está dentro hoy.
+- `/recepcion/clientes` — tabla con buscador, filtro por estado, boton renovar, formulario para nuevo cliente y botón **Registrar rostro**.
+
+### Cómo funciona el reconocimiento facial
+- Usa **el mismo modelo que la app Android** (`frontend/public/models/mobilefacenet.tflite`) y las mismas funciones de Supabase (`sql/reconocimiento_facial.sql` de la app): un rostro registrado en la app sirve en la web y al revés.
+- El navegador detecta la cara (MediaPipe) y la convierte en 192 números (`src/biometria/reconocedor.js`). Solo ese vector viaja al backend; para identificar no se mandan fotos.
+- Las librerías se cargan desde CDN (jsdelivr / Google) al encender la cámara: se necesita internet y permiso de cámara (Vercel ya da HTTPS).
+- Si confunde personas o no reconoce, se ajusta el umbral en Supabase: `_umbral_rostro()` (0.70 por defecto).
 - `/recepcion/solicitudes` — tabla de solicitudes de asesoria con badge de pendientes y botones aprobar/rechazar.
 
 **Encargado / Dueño** (mismo rol de vistas, roles `encargado` y `dueno`)
@@ -63,7 +69,6 @@ La web usa la misma base de Supabase que la app Android: se entra con las cuenta
 ## Lo que falta que tú conectes/ajustes
 
 - **Base de datos**: ya conectada a Supabase (`backend/src/data/supabase.js`). Las contraseñas las hashea la propia base.
-- **Lector de QR real** en `EscanearQR.jsx` (recepcion) y en el home del cliente (Android).
 - **Foto de perfil de instructores** (subida de imagenes) — falta el manejo de archivos (ej. `multer` + storage).
 - **Renovación real de membresías** (ahorita solo marca `activo` y reinicia la fecha, sin logica de vencimiento/pago).
 - **Edición** de clientes/personal/servicios/gastos: los botones "Editar" están de placeholder, solo falta reutilizar el mismo `Modal` + `PUT` que ya usa "Nuevo".
@@ -77,6 +82,8 @@ POST   /api/auth/login-cliente      (app Android)
 
 GET    /api/clientes
 GET    /api/clientes/planes         (tipos de membresia)
+GET    /api/clientes/rostros        (ids de clientes con rostro registrado)
+POST   /api/clientes/:id/rostro     (registrar/actualizar rostro: { embedding[192], foto? })
 POST   /api/clientes
 PUT    /api/clientes/:id
 PUT    /api/clientes/:id/renovar
@@ -105,5 +112,7 @@ POST   /api/asesorias/solicitar         (cliente)
 GET    /api/asesorias/mis-clientes      (instructor)
 PUT    /api/asesorias/:id               (instructor)
 
-POST   /api/qr/registrar                (recepcion/instructor)
+POST   /api/acceso/rostro               (reconocimiento facial: entrada/salida automatica)
+GET    /api/acceso/hoy                  (quien esta dentro hoy)
+POST   /api/qr/registrar                (entrada/salida manual por numero de membresia)
 ```

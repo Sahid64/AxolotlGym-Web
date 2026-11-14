@@ -8,7 +8,7 @@ import Privacidad from "../pages/Privacidad.jsx";
 import RutaProtegida from "../components/layout/RutaProtegida.jsx";
 
 // Recepcion
-import EscanearQR from "../pages/recepcion/EscanearQR.jsx";
+import AccesoFacial from "../pages/recepcion/AccesoFacial.jsx"; // toma de lista con reconocimiento facial
 import Clientes from "../pages/recepcion/Clientes.jsx";
 import Solicitudes from "../pages/recepcion/Solicitudes.jsx";
 import PagosRecepcion from "../pages/recepcion/Pagos.jsx";
@@ -37,7 +37,7 @@ export default function AppRoutes() {
         path="/recepcion"
         element={
           <RutaProtegida rolesPermitidos={["recepcion"]}>
-            <EscanearQR />
+            <AccesoFacial />
           </RutaProtegida>
         }
       />

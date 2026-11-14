@@ -13,7 +13,7 @@ export default function Sidebar() {
 
   const menuPorRol = {
     recepcion: [
-      { to: "/recepcion", label: tr.menu.escanearQr, fin: true },
+      { to: "/recepcion", label: tr.menu.accesoFacial, fin: true },
       { to: "/recepcion/clientes", label: tr.menu.clientes },
       { to: "/recepcion/solicitudes", label: tr.menu.solicitudes },
       { to: "/recepcion/pagos", label: tr.menu.pagos },

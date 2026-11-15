@@ -37,6 +37,15 @@ export const listarPersonal = manejar(async (req, res) => {
   res.json({ ok: true, personal: await Promise.all(filas.map(aEmpleado)) });
 });
 
+// GET /api/personal/:id/foto -> Foto de perfil del personal (JPEG en base64 desde foto_personal) o null
+export const obtenerFotoPersonal = manejar(async (req, res) => {
+  const emp = await buscarEmpleado(Number(req.params.id));
+  if (!emp?.gmail) return res.json({ ok: true, foto: null });
+  const b64 = await rpc("foto_personal", { p_gmail: emp.gmail });
+  const foto = b64 ? (String(b64).startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`) : null;
+  res.json({ ok: true, foto });
+});
+
 // POST /api/personal
 // crear_personal crea la cuenta con la contraseña temporal; si la web manda una
 // contraseña, se cambia enseguida (debe cumplir las reglas de seguridad de la base).

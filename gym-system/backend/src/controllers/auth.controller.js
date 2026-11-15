@@ -43,3 +43,12 @@ export const loginCliente = manejar(async (req, res) => {
   const cliente = { id: fila.id, nombre: fila.nombre, correo: fila.gmail, rol: "cliente", codigoQr: fila.codigo_qr };
   res.json({ ok: true, token: firmar(cliente), cliente });
 });
+
+// GET /api/auth/mi-foto -> Foto de perfil del usuario de personal con sesión activa
+export const obtenerMiFoto = manejar(async (req, res) => {
+  const correo = req.usuario?.correo;
+  if (!correo) return res.json({ ok: true, foto: null });
+  const b64 = await rpc("foto_personal", { p_gmail: correo });
+  const foto = b64 ? (String(b64).startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`) : null;
+  res.json({ ok: true, foto });
+});

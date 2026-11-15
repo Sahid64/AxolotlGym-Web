@@ -2,12 +2,13 @@
 import { Router } from "express";
 import { verificarToken, permitirRoles } from "../middleware/auth.js";
 import {
-  listarPersonal, crearPersonal, actualizarPersonal, eliminarPersonal,
+  listarPersonal, obtenerFotoPersonal, crearPersonal, actualizarPersonal, eliminarPersonal,
 } from "../controllers/personal.controller.js";
 
 const router = Router();
 router.use(verificarToken, permitirRoles("encargado", "dueno"));
 router.get("/", listarPersonal);
+router.get("/:id/foto", obtenerFotoPersonal);
 router.post("/", crearPersonal);
 router.put("/:id", actualizarPersonal);
 router.delete("/:id", eliminarPersonal);

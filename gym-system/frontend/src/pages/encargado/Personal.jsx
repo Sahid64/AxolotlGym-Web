@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../../api/api.js";
 import { useIdioma } from "../../context/IdiomaContext.jsx";
 import Table from "../../components/ui/Table.jsx";
@@ -51,6 +51,8 @@ const vacio = { nombre: "", telefono: "", correo: "", password: "", rol: "recepc
 export default function Personal() {
   const { tr, traducirMsg } = useIdioma();
   const [personal, setPersonal] = useState([]);
+  const [fotos, setFotos] = useState({});
+  const fotosPedidasRef = useRef(new Set());
   const [aviso, setAviso] = useState("");
   const [buscar, setBuscar] = useState("");
   const [filtroRol, setFiltroRol] = useState("");
@@ -100,7 +102,22 @@ export default function Personal() {
 
   async function cargar() {
     const { data } = await api.get("/personal");
-    setPersonal(data.personal);
+    const lista = data.personal || [];
+    setPersonal(lista);
+
+    lista.forEach((p) => {
+      if (!fotosPedidasRef.current.has(p.id)) {
+        fotosPedidasRef.current.add(p.id);
+        api
+          .get(`/personal/${p.id}/foto`)
+          .then(({ data: res }) => {
+            if (res?.foto) {
+              setFotos((prev) => ({ ...prev, [p.id]: res.foto }));
+            }
+          })
+          .catch(() => {});
+      }
+    });
   }
 
   // Actualiza un campo (limpiando lo inválido) y quita su error
@@ -203,6 +220,30 @@ export default function Personal() {
   }
 
   const columnas = [
+    {
+      key: "foto",
+      label: tr.personal.colFoto,
+      render: (f) => {
+        const nombre = (f.nombre || "").trim();
+        const inicial = (nombre || "?").charAt(0).toUpperCase();
+        const foto = fotos[f.id];
+        return (
+          <div className="flex items-center justify-center">
+            {foto ? (
+              <img
+                src={foto}
+                alt={nombre}
+                className="w-9 h-9 shrink-0 rounded-full border border-[var(--c-acento)] object-cover bg-[var(--c-campo)]"
+              />
+            ) : (
+              <div className="w-9 h-9 shrink-0 rounded-full border border-[var(--c-acento)] bg-[var(--c-campo)] flex items-center justify-center text-xs font-bold text-[var(--c-acento)]">
+                {inicial}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
     { key: "nombre", label: tr.personal.colNombre },
     { key: "rol", label: tr.personal.colRol, render: (f) => <span className="capitalize">{tr.roles[f.rol] || f.rol}</span> },
     { key: "correo", label: tr.personal.colCorreo },

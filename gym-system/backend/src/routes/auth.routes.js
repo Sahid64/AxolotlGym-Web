@@ -1,7 +1,9 @@
 import { Router } from "express";
-import { loginStaff, loginCliente } from "../controllers/auth.controller.js";
+import { verificarToken } from "../middleware/auth.js";
+import { loginStaff, loginCliente, obtenerMiFoto } from "../controllers/auth.controller.js";
 
 const router = Router();
 router.post("/login", loginStaff);         // recepcion, instructor, encargado, dueno
 router.post("/login-cliente", loginCliente); // app Android del cliente
+router.get("/mi-foto", verificarToken, obtenerMiFoto);
 export default router;

@@ -61,16 +61,17 @@ const textos = {
       ],
       carrusel: [
         "Tu mejor versión empieza aquí",
-        "Disciplina que transforma",
         "Disciplina, constancia y resultados",
-        "Un espacio para tus objetivos",
+        "Un espacio diseñado para tus objetivos",
         "Somos una comunidad",
+        "Disciplina que transforma",
         "Entrena hoy por el mañana que quieres",
       ],
       verImagen: "Ver imagen",
       pie: "Todos los derechos reservados.",
     },
     volverInicio: "← Volver a la página principal",
+    volverAtras: "← Volver",
 
     // Login
     login: {
@@ -478,16 +479,17 @@ const textos = {
       ],
       carrusel: [
         "Your best self starts here",
-        "Discipline that transforms",
         "Discipline, consistency and results",
-        "A space for your goals",
+        "A space designed for your goals",
         "We are a community",
+        "Discipline that transforms",
         "Train today for the tomorrow you want",
       ],
       verImagen: "View image",
       pie: "All rights reserved.",
     },
     volverInicio: "← Back to home page",
+    volverAtras: "← Back",
 
     // Login
     login: {

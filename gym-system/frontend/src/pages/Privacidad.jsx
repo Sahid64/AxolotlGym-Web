@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useIdioma } from "../context/IdiomaContext.jsx";
 import BotonTema from "../components/ui/BotonTema.jsx";
 import BotonIdioma from "../components/ui/BotonIdioma.jsx";
@@ -159,6 +159,14 @@ const PRIVACIDAD = {
 
 export default function Privacidad() {
   const { idioma, tr } = useIdioma();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Vuelve a la pantalla de la que venía (inicio o login). Si se abrió directo, va al inicio.
+  const volver = (e) => {
+    e.preventDefault();
+    if (location.key !== "default") navigate(-1);
+    else navigate("/");
+  };
   const doc = PRIVACIDAD[idioma] || PRIVACIDAD.es;
 
   return (
@@ -206,10 +214,11 @@ export default function Privacidad() {
 
           <div className="flex justify-center">
             <Link
-              to="/login"
+              to="/"
+              onClick={volver}
               className="inline-flex items-center justify-center px-6 py-2.5 rounded-md text-sm font-medium bg-[var(--c-bronce)] hover:bg-[var(--c-acento)] text-[var(--c-sobre-acento)] transition-colors"
             >
-              {tr.volverLogin}
+              {tr.volverAtras}
             </Link>
           </div>
         </div>

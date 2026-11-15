@@ -25,8 +25,10 @@ export default function Sidebar() {
     recepcion: [
       { to: "/recepcion", label: tr.menu.accesoFacial, fin: true },
       { to: "/recepcion/clientes", label: tr.menu.clientes },
+      { to: "/recepcion/visitas", label: tr.menuExtra.visitas },
       { to: "/recepcion/solicitudes", label: tr.menu.solicitudes },
       { to: "/recepcion/pagos", label: tr.menu.pagos },
+      { to: "/recepcion/perfil", label: tr.menuExtra.perfil },
     ],
     encargado: [
       { to: "/encargado", label: tr.menu.dashboard, fin: true },
@@ -35,7 +37,10 @@ export default function Sidebar() {
       { to: "/encargado/servicios", label: tr.menu.servicios },
       { to: "/encargado/gastos", label: tr.menu.gastos },
       { to: "/encargado/pagos", label: tr.menu.pagos },
+      { to: "/encargado/visitas", label: tr.menuExtra.visitas },
       { to: "/encargado/reportes", label: tr.menu.reportes },
+      { to: "/encargado/avisos", label: tr.menuExtra.avisos },
+      { to: "/encargado/perfil", label: tr.menuExtra.perfil },
     ],
     dueno: [
       { to: "/encargado", label: tr.menu.dashboard, fin: true },
@@ -44,7 +49,10 @@ export default function Sidebar() {
       { to: "/encargado/servicios", label: tr.menu.servicios },
       { to: "/encargado/gastos", label: tr.menu.gastos },
       { to: "/encargado/pagos", label: tr.menu.pagos },
+      { to: "/encargado/visitas", label: tr.menuExtra.visitas },
       { to: "/encargado/reportes", label: tr.menu.reportes },
+      { to: "/encargado/avisos", label: tr.menuExtra.avisos },
+      { to: "/encargado/perfil", label: tr.menuExtra.perfil },
     ],
   };
 

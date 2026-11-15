@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { textosModulos, mensajesModulos } from "./textosModulos.js";
 
 const IdiomaContext = createContext(null);
 
@@ -108,6 +109,7 @@ const textos = {
         quieto: "No te muevas...",
         verificando: "Verificando...",
         listoRetirate: "¡Listo! Puedes pasar",
+        parpadea: "Parpadea despacio para confirmar que eres tú",
       },
       ultimoRegistro: "Último registro",
       instruccion: "Cuando un cliente se coloque frente a la cámara, aquí aparecerán sus datos",
@@ -183,20 +185,22 @@ const textos = {
       confirmarEditarMsg: "¿Estás seguro de que deseas guardar los cambios de este cliente?",
       confirmarRenovarMsg: (nombre) => `Selecciona el plan y método de pago para renovar a ${nombre}:`,
       confirmarRenovarBtn: "Confirmar renovación",
-      // Recepción: Desactivar estatus y quitar plan
-      modalDesactivarTitulo: "Desactivar cliente y retirar plan",
-      modalDesactivarMsg: (nombre) =>
-        `¿Estás seguro de que deseas desactivar el estatus de ${nombre} y quitarle su plan activo? El cliente no podrá ingresar hasta renovar su membresía.`,
-      confirmarDesactivarBtn: "Sí, desactivar",
+      // Encargado: Reactivar una cuenta dada de baja
+      reactivar: "Reactivar",
+      modalReactivarTitulo: "Reactivar cuenta del cliente",
+      modalReactivarMsg: (nombre) =>
+        `¿Deseas reactivar la cuenta de ${nombre}? Podrá volver a entrar al gimnasio si tiene una membresía vigente.`,
+      confirmarReactivarBtn: "Sí, reactivar",
+      errorReactivar: "No se pudo reactivar al cliente",
       // Encargado: Dar de baja (Suspensión vs Derechos ARCO)
       modalBajaTitulo: "Dar de baja al cliente",
       modalBajaSubtitulo: (nombre) => `Selecciona el procedimiento de baja para ${nombre}:`,
       bajaOpcionSuspensionTitulo: "Baja / Suspensión conforme a Términos y Políticas",
       bajaOpcionSuspensionDesc:
-        "Se desactiva la cuenta y se retira su plan activo. Sus datos se eliminarán de forma automática tras 365 días de inactividad, conservando únicamente los registros de pagos con fines contables y fiscales.",
+        "La cuenta queda inactiva y el cliente no puede entrar al gimnasio. Se puede reactivar después. Si no se reactiva, sus datos se eliminan de forma automática tras 365 días sin uso (con aviso 30 días antes), conservando únicamente los registros de pagos con fines contables y fiscales.",
       bajaOpcionArcoTitulo: "Derechos ARCO / Revocación de consentimiento (Eliminar datos)",
       bajaOpcionArcoDesc:
-        "El cliente solicitó revocar su consentimiento y eliminar todos sus datos personales de inmediato. Solo se conservarán los registros de pagos con fines contables y fiscales.",
+        "El cliente solicitó revocar su consentimiento. Se elimina de inmediato al cliente y todos sus datos (personales, de salud, rostro, accesos, membresías, rutinas y asesorías). No se puede deshacer. Solo se conservan los registros de pagos con fines contables y fiscales.",
       confirmarBajaBtn: "Confirmar baja",
       errorBaja: "No se pudo procesar la baja del cliente",
     },
@@ -495,6 +499,7 @@ const textos = {
         quieto: "Hold still...",
         verificando: "Verifying...",
         listoRetirate: "Done! You can go in",
+        parpadea: "Blink slowly to confirm it's you",
       },
       ultimoRegistro: "Last record",
       instruccion: "When a client stands in front of the camera, their details will appear here",
@@ -570,20 +575,22 @@ const textos = {
       confirmarEditarMsg: "Are you sure you want to save the changes for this client?",
       confirmarRenovarMsg: (nombre) => `Select the plan and payment method to renew ${nombre}:`,
       confirmarRenovarBtn: "Confirm renewal",
-      // Reception: Deactivate status and remove plan
-      modalDesactivarTitulo: "Deactivate client and remove plan",
-      modalDesactivarMsg: (nombre) =>
-        `Are you sure you want to deactivate ${nombre}'s status and remove their active plan? The client will not be able to enter until renewing their membership.`,
-      confirmarDesactivarBtn: "Yes, deactivate",
+      // Manager: Reactivate a terminated account
+      reactivar: "Reactivate",
+      modalReactivarTitulo: "Reactivate client account",
+      modalReactivarMsg: (nombre) =>
+        `Do you want to reactivate ${nombre}'s account? They will be able to enter the gym again if they have a valid membership.`,
+      confirmarReactivarBtn: "Yes, reactivate",
+      errorReactivar: "Could not reactivate the client",
       // Manager: Terminate (Suspension vs ARCO Rights)
       modalBajaTitulo: "Terminate client",
       modalBajaSubtitulo: (nombre) => `Select the termination procedure for ${nombre}:`,
       bajaOpcionSuspensionTitulo: "Termination / Suspension under Terms & Policies",
       bajaOpcionSuspensionDesc:
-        "Deactivates the account and removes the active plan. Personal data will be automatically deleted after 365 days of inactivity, retaining only payment records for accounting and tax purposes.",
+        "The account becomes inactive and the client cannot enter the gym. It can be reactivated later. If not reactivated, their data is automatically deleted after 365 days without use (with a 30-day notice), retaining only payment records for accounting and tax purposes.",
       bajaOpcionArcoTitulo: "ARCO Rights / Consent Revocation (Delete personal data)",
       bajaOpcionArcoDesc:
-        "The client requested to revoke consent and immediately delete all personal data. Only payment records will be retained for accounting and tax purposes.",
+        "The client requested to revoke consent. The client and all their data (personal, health, face, access logs, memberships, routines and coaching) are deleted immediately. This cannot be undone. Only payment records are retained for accounting and tax purposes.",
       confirmarBajaBtn: "Confirm termination",
       errorBaja: "Could not process client termination",
     },
@@ -798,6 +805,12 @@ function traducirMensajeServidor(msg, idioma) {
       "Client terminated in accordance with terms and policies",
     "Datos personales del cliente eliminados por Derechos ARCO":
       "Client personal data deleted under ARCO Rights",
+    "Cliente reactivado": "Client reactivated",
+    "Solo el Encargado puede eliminar clientes": "Only the Manager can delete clients",
+    "Solo el Encargado puede activar o dar de baja a un cliente":
+      "Only the Manager can activate or terminate a client",
+    "Este usuario también es parte del personal; elimínalo desde Personal":
+      "This user is also a staff member; delete them from Staff",
     "Se agrego al personal": "Staff member added",
     "Se agrego al personal. Contraseña temporal: Axolotl2026": "Staff member added. Temporary password: Axolotl2026",
     "Se elimino del personal": "Staff member removed",
@@ -821,6 +834,7 @@ function traducirMensajeServidor(msg, idioma) {
     "Vector facial inválido": "Invalid face data",
   };
   if (exactos[texto]) return exactos[texto];
+  if (mensajesModulos[texto]) return mensajesModulos[texto];
 
   // Mensajes dinamicos de QR / bloqueo
   let m = /^Bienvenido (.+)$/i.exec(texto);
@@ -856,7 +870,8 @@ export function IdiomaProvider({ children }) {
   }, [idioma]);
 
   const alternarIdioma = () => setIdioma((actual) => (actual === "es" ? "en" : "es"));
-  const tr = textos[idioma] || textos.es;
+  const clave = textos[idioma] ? idioma : "es";
+  const tr = useMemo(() => ({ ...textos[clave], ...textosModulos[clave] }), [clave]);
   const traducirMsg = (msg) => traducirMensajeServidor(msg, idioma);
 
   // Traduce nombres de planes/servicios comunes al inglés cuando idioma === "en"

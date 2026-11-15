@@ -20,6 +20,11 @@ import Servicios from "../pages/encargado/Servicios.jsx";
 import Gastos from "../pages/encargado/Gastos.jsx";
 import Reportes from "../pages/encargado/Reportes.jsx";
 import PagosEncargado from "../pages/encargado/Pagos.jsx";
+import Avisos from "../pages/encargado/Avisos.jsx"; // comunicados por correo
+
+// Compartidas por Recepcion y Encargado (igual que la app)
+import Visitas from "../pages/compartidas/Visitas.jsx"; // pase de un dia
+import Perfil from "../pages/compartidas/Perfil.jsx";
 
 export default function AppRoutes() {
   return (
@@ -129,6 +134,51 @@ export default function AppRoutes() {
         element={
           <RutaProtegida rolesPermitidos={["encargado", "dueno"]}>
             <Reportes />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/recepcion/visitas"
+        element={
+          <RutaProtegida rolesPermitidos={["recepcion"]}>
+            <Visitas />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/recepcion/perfil"
+        element={
+          <RutaProtegida rolesPermitidos={["recepcion"]}>
+            <Perfil />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/encargado/visitas"
+        element={
+          <RutaProtegida rolesPermitidos={["encargado", "dueno"]}>
+            <Visitas />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/encargado/avisos"
+        element={
+          <RutaProtegida rolesPermitidos={["encargado", "dueno"]}>
+            <Avisos />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
+        path="/encargado/perfil"
+        element={
+          <RutaProtegida rolesPermitidos={["encargado", "dueno"]}>
+            <Perfil />
           </RutaProtegida>
         }
       />

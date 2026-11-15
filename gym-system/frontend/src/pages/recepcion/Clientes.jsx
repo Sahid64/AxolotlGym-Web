@@ -8,6 +8,12 @@ import Boton from "../../components/ui/Boton.jsx";
 import Modal from "../../components/ui/Modal.jsx";
 import Input from "../../components/ui/Input.jsx";
 import CamaraFacial from "../../components/facial/CamaraFacial.jsx";
+import CancelarMembresia from "../../components/clientes/CancelarMembresia.jsx";
+import CamposSalud, {
+  saludVacia,
+  fechaNacimientoValida,
+  saludParaEnviar,
+} from "../../components/clientes/CamposSalud.jsx";
 
 const campo =
   "bg-[var(--c-campo)] border border-[var(--c-borde)] rounded-md px-3 py-2 text-sm text-[var(--c-texto)] " +
@@ -25,7 +31,18 @@ const Err = ({ msg }) =>
   msg ? <p className="text-xs text-[var(--c-rojo)] -mt-2 mb-3">{msg}</p> : null;
 
 const METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia"];
-const formVacio = { nombre: "", apellido: "", telefono: "", correo: "", plan: "", metodo: "Efectivo" };
+const formVacio = {
+  nombre: "",
+  apellido: "",
+  telefono: "",
+  correo: "",
+  plan: "",
+  metodo: "Efectivo",
+  contactoNombre: "",
+  contactoTelefono: "",
+  salud: saludVacia,
+};
+
 
 export default function Clientes() {
   const { usuario } = useAuth();
@@ -60,11 +77,16 @@ export default function Clientes() {
   const [procesandoRenovar, setProcesandoRenovar] = useState(false);
 
   // Modal de Recepción: Desactivar estatus y quitar plan
-  const [clienteADesactivar, setClienteADesactivar] = useState(null);
+  const [clienteAReactivar, setClienteAReactivar] = useState(null);
 
   // Modal del Encargado: Dar de baja (Suspensión vs Derechos ARCO)
   const [clienteABaja, setClienteABaja] = useState(null);
   const [tipoBaja, setTipoBaja] = useState("suspension"); // "suspension" | "arco"
+
+  // Cancelación de membresía (Recepción solicita, el Encargado autoriza en Reportes)
+  const [clienteACancelar, setClienteACancelar] = useState(null);
+  const [cancelacionPendiente, setCancelacionPendiente] = useState(new Set());
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
   const vNombre = (v, etiqueta) => {
     const t = v.trim();
@@ -104,6 +126,10 @@ export default function Clientes() {
   }
 
   async function cargar() {
+    api
+      .get("/clientes/cancelaciones-pendientes")
+      .then(({ data }) => setCancelacionPendiente(new Set(data.ids)))
+      .catch(() => {});
     const { data } = await api.get("/clientes", { params: { buscar, estado } });
     const lista = data.clientes || [];
     setClientes(lista);
@@ -183,17 +209,33 @@ export default function Clientes() {
   function abrirEditar(cliente) {
     setEditandoId(cliente.id);
     setForm({
+      ...formVacio,
       nombre: cliente.nombre ?? "",
       apellido: cliente.apellido ?? "",
       telefono: cliente.telefono ?? "",
       correo: cliente.correo ?? "",
       plan: cliente.plan ?? "",
-      metodo: "Efectivo",
     });
     setErrores({});
     setConfirmandoGuardar(false);
     setModalAbierto(true);
+
+    // Al editar se cargan el contacto de emergencia y los datos de salud que ya tiene (igual que la app)
+    setCargandoDetalle(true);
+    api
+      .get(`/clientes/${cliente.id}/detalle`)
+      .then(({ data }) =>
+        setForm((f) => ({
+          ...f,
+          contactoNombre: data.contacto?.nombre || "",
+          contactoTelefono: data.contacto?.telefono || "",
+          salud: { ...saludVacia, ...data.salud },
+        }))
+      )
+      .catch(() => {})
+      .finally(() => setCargandoDetalle(false));
   }
+
 
   function cerrarModal() {
     setModalAbierto(false);
@@ -213,6 +255,15 @@ export default function Clientes() {
       telefono: vTelefono(form.telefono),
       correo: vCorreo(form.correo),
       plan: editandoId || form.plan ? "" : tr.val.seleccionaPlan,
+      // Contacto de emergencia obligatorio (igual que la app y la base)
+      contactoNombre:
+        form.contactoNombre.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g, "").length >= 3 ? "" : tr.salud.valContactoNombre,
+      contactoTelefono: /^\d{10}$/.test(form.contactoTelefono) ? "" : tr.salud.valContactoTelefono,
+      // Fecha de nacimiento obligatoria al registrar; al editar, si hay una, debe ser válida
+      salud_fechaNacimiento:
+        (!editandoId || form.salud.fechaNacimiento) && !fechaNacimientoValida(form.salud.fechaNacimiento)
+          ? tr.salud.valFecha
+          : "",
     };
     setErrores(errs);
     if (Object.values(errs).some(Boolean)) return;
@@ -227,6 +278,8 @@ export default function Clientes() {
       nombre: form.nombre.trim(),
       apellido: form.apellido.trim(),
       correo: form.correo.trim(),
+      contactoNombre: form.contactoNombre.trim(),
+      salud: saludParaEnviar(form.salud),
     };
 
     try {
@@ -235,7 +288,7 @@ export default function Clientes() {
         setAviso("");
       } else {
         const { data } = await api.post("/clientes", datos);
-        setAviso(traducirMsg(data.mensaje) || "");
+        setAviso([data.mensaje, ...(data.avisos || [])].map(traducirMsg).filter(Boolean).join(" "));
       }
     } catch (err) {
       setConfirmandoGuardar(false);
@@ -292,7 +345,9 @@ export default function Clientes() {
         metodo: metodoRenovar,
         comprobante: metodoRenovar === "Transferencia" ? comprobanteRenovar : undefined,
       });
-      setAviso(traducirMsg(data.mensaje) || tr.clientes.membresiaRenovada);
+      setAviso(
+        [traducirMsg(data.mensaje) || tr.clientes.membresiaRenovada, ...(data.avisos || []).map(traducirMsg)].join(" ")
+      );
       setClienteARenovar(null);
       cargar();
     } catch (err) {
@@ -302,15 +357,16 @@ export default function Clientes() {
     }
   }
 
-  async function confirmarDesactivarCliente() {
-    if (!clienteADesactivar) return;
+  // Solo Encargado: vuelve a activar una cuenta dada de baja (igual que la app)
+  async function confirmarReactivarCliente() {
+    if (!clienteAReactivar) return;
     try {
-      const { data } = await api.put(`/clientes/${clienteADesactivar.id}/desactivar`);
+      const { data } = await api.put(`/clientes/${clienteAReactivar.id}/estado`, { activo: true });
       setAviso(traducirMsg(data.mensaje) || "");
     } catch (err) {
-      setAviso(traducirMsg(err.response?.data?.mensaje) || tr.clientes.errorBaja);
+      setAviso(traducirMsg(err.response?.data?.mensaje) || tr.clientes.errorReactivar);
     }
-    setClienteADesactivar(null);
+    setClienteAReactivar(null);
     cargar();
   }
 
@@ -409,24 +465,38 @@ export default function Clientes() {
               <Boton tamano="sm" variante="outline" onClick={() => abrirRostro(f)}>
                 {conRostro.has(f.id) ? tr.facial.actualizarRostro : tr.facial.registrarRostro}
               </Boton>
-              {esEncargado ? (
+              {cancelacionPendiente.has(f.id) ? (
+                <span className="px-2 py-1 rounded-lg border border-[var(--c-rojo)] text-[var(--c-rojo)] text-xs">
+                  {tr.cancelacion.pendiente}
+                </span>
+              ) : (
+                <Boton tamano="sm" variante="outline" onClick={() => setClienteACancelar(f)}>
+                  {tr.cancelacion.boton}
+                </Boton>
+              )}
+              {esEncargado && (
                 <Boton tamano="sm" variante="peligro" onClick={() => abrirModalBaja(f)}>
                   {tr.darDeBaja}
-                </Boton>
-              ) : (
-                <Boton tamano="sm" variante="peligro" onClick={() => setClienteADesactivar(f)}>
-                  {tr.desactivar}
                 </Boton>
               )}
             </>
           ) : (
             <>
+              {/* Editar siempre está disponible, aunque el plan no esté vigente (igual que la app) */}
+              <Boton tamano="sm" variante="outline" onClick={() => abrirEditar(f)}>
+                {tr.editar}
+              </Boton>
               <Boton tamano="sm" variante="outline" onClick={() => abrirModalRenovar(f)}>
                 {tr.renovar}
               </Boton>
               <Boton tamano="sm" variante="outline" onClick={() => abrirRostro(f)}>
                 {conRostro.has(f.id) ? tr.facial.actualizarRostro : tr.facial.registrarRostro}
               </Boton>
+              {esEncargado && f.estadoCuenta !== "activo" && (
+                <Boton tamano="sm" variante="exito" onClick={() => setClienteAReactivar(f)}>
+                  {tr.clientes.reactivar}
+                </Boton>
+              )}
               {esEncargado && (
                 <Boton tamano="sm" variante="peligro" onClick={() => abrirModalBaja(f)}>
                   {tr.darDeBaja}
@@ -492,6 +562,36 @@ export default function Clientes() {
 
           <Input label={tr.clientes.correo} type="email" value={form.correo} onChange={cambiar("correo")} />
           <Err msg={errores.correo} />
+
+          {cargandoDetalle && <p className="text-xs text-[var(--c-texto-tenue)] mb-3">{tr.salud.cargando}</p>}
+
+          {/* Contacto de emergencia (obligatorio) */}
+          <p className="text-sm font-semibold text-[var(--c-texto)] mt-4 mb-2">{tr.salud.contactoTitulo}</p>
+          <Input
+            label={tr.salud.contactoNombre}
+            value={form.contactoNombre}
+            onChange={cambiar("contactoNombre", limpiarLetras)}
+          />
+          <Err msg={errores.contactoNombre} />
+          <Input
+            label={tr.salud.contactoTelefono}
+            value={form.contactoTelefono}
+            inputMode="numeric"
+            maxLength={10}
+            onChange={cambiar("contactoTelefono", limpiarTelefono)}
+          />
+          <Err msg={errores.contactoTelefono} />
+
+          {/* Fecha de nacimiento y datos de salud (solo Recepción y Encargado) */}
+          <CamposSalud
+            salud={form.salud}
+            fechaObligatoria={!editandoId}
+            errorFecha={errores.salud_fechaNacimiento}
+            onChange={(salud) => {
+              setForm((f) => ({ ...f, salud }));
+              setErrores((er) => ({ ...er, salud_fechaNacimiento: "" }));
+            }}
+          />
 
           {!editandoId && (
             <>
@@ -667,21 +767,34 @@ export default function Clientes() {
         </div>
       </Modal>
 
-      {/* Modal de Recepción: Desactivar estatus y retirar plan */}
+      {clienteACancelar && (
+        <CancelarMembresia
+          cliente={clienteACancelar}
+          nombre={nombreCliente(clienteACancelar)}
+          onCerrar={() => setClienteACancelar(null)}
+          onListo={(msg) => {
+            setClienteACancelar(null);
+            setAviso(msg);
+            cargar();
+          }}
+        />
+      )}
+
+      {/* Modal del Encargado: Reactivar una cuenta dada de baja */}
       <Modal
-        abierto={Boolean(clienteADesactivar)}
-        titulo={tr.clientes.modalDesactivarTitulo}
-        onClose={() => setClienteADesactivar(null)}
+        abierto={Boolean(clienteAReactivar)}
+        titulo={tr.clientes.modalReactivarTitulo}
+        onClose={() => setClienteAReactivar(null)}
       >
         <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">
-          {tr.clientes.modalDesactivarMsg(nombreCliente(clienteADesactivar))}
+          {tr.clientes.modalReactivarMsg(nombreCliente(clienteAReactivar))}
         </p>
         <div className="flex items-center justify-center gap-3">
-          <Boton variante="outline" className="flex-1" onClick={() => setClienteADesactivar(null)}>
+          <Boton variante="outline" className="flex-1" onClick={() => setClienteAReactivar(null)}>
             {tr.cancelar}
           </Boton>
-          <Boton variante="peligro" className="flex-1" onClick={confirmarDesactivarCliente}>
-            {tr.clientes.confirmarDesactivarBtn}
+          <Boton variante="exito" className="flex-1" onClick={confirmarReactivarCliente}>
+            {tr.clientes.confirmarReactivarBtn}
           </Boton>
         </div>
       </Modal>

@@ -27,12 +27,36 @@ export default function Dashboard() {
   const [ocupacion, setOcupacion] = useState([]);
   const [porMes, setPorMes] = useState([]);
   const [porDia, setPorDia] = useState([]);
+  const [dentro, setDentro] = useState(null);
+  const [ingresosDia, setIngresosDia] = useState([]);
 
   useEffect(() => {
-    api.get("/dashboard/resumen").then((r) => setResumen(r.data.resumen));
-    api.get("/dashboard/ocupacion").then((r) => setOcupacion(r.data.ocupacion));
-    api.get("/dashboard/clientes-por-mes").then((r) => setPorMes(r.data.data));
-    api.get("/dashboard/entradas-por-dia").then((r) => setPorDia(r.data.data));
+    // Si una peticion falla se conservan los datos anteriores y se reintenta en el siguiente ciclo
+    function cargar() {
+      api.get("/dashboard/resumen").then((r) => setResumen(r.data.resumen)).catch(() => {});
+      api.get("/dashboard/ocupacion").then((r) => setOcupacion(r.data.ocupacion)).catch(() => {});
+      api.get("/dashboard/clientes-por-mes").then((r) => setPorMes(r.data.data)).catch(() => {});
+      api.get("/dashboard/entradas-por-dia").then((r) => setPorDia(r.data.data)).catch(() => {});
+      // Igual que la app: personas dentro ahora e ingresos por día de la semana
+      api.get("/dashboard/ocupacion-actual").then((r) => setDentro(r.data.dentro)).catch(() => {});
+      api.get("/dashboard/ingresos-por-dia").then((r) => setIngresosDia(r.data.data)).catch(() => {});
+    }
+
+    cargar();
+    // Se actualiza solo cada 30 s (tambien ve lo que registra la app), pero no mientras la pestaña esta oculta
+    const id = setInterval(() => {
+      if (!document.hidden) cargar();
+    }, 30000);
+    // Al volver a la pestaña se actualiza de inmediato
+    const alVolver = () => {
+      if (!document.hidden) cargar();
+    };
+    document.addEventListener("visibilitychange", alVolver);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
   }, []);
 
   const porMesTraducido = porMes.map((item) => ({
@@ -45,11 +69,17 @@ export default function Dashboard() {
     dia: tr.dashboard.diasCortos[item.dia] || item.dia,
   }));
 
+  const ingresosDiaTraducido = ingresosDia.map((item) => ({
+    ...item,
+    dia: tr.dashboard.diasCortos[item.dia] || item.dia,
+  }));
+
   return (
     <div>
       <h1 className="text-xl font-semibold text-[var(--c-texto)] mb-6">{tr.dashboard.titulo}</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard titulo={tr.dashboardExtra.dentroAhora} valor={dentro ?? "—"} acento="primary" />
         <StatCard titulo={tr.dashboard.clientesActivos} valor={resumen.clientesActivos} acento="green" />
         <StatCard titulo={tr.dashboard.clientesInactivos} valor={resumen.clientesInactivos} acento="red" />
         <StatCard titulo={tr.dashboard.ingresosMes} valor={`$${resumen.ingresosMes}`} acento="primary" />
@@ -104,6 +134,22 @@ export default function Dashboard() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      <div className={`${tarjeta} mt-6`}>
+        <p className="text-sm font-medium text-center text-[var(--c-texto)] mb-4">{tr.dashboardExtra.ingresosDia}</p>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={ingresosDiaTraducido}>
+            <CartesianGrid strokeDasharray="3 3" stroke={rejilla} />
+            <XAxis dataKey="dia" {...ejeProps} interval={0} />
+            <YAxis {...ejeProps} tickFormatter={(v) => `$${v}`} />
+            <Tooltip
+              {...tooltipProps}
+              formatter={(v) => [`$${Number(v).toLocaleString("es-MX")}`, tr.dashboardExtra.ingresos]}
+            />
+            <Bar dataKey="ingresos" name={tr.dashboardExtra.ingresos} fill="var(--c-acento)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

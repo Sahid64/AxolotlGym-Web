@@ -1,4 +1,4 @@
-import { supabase, consulta, manejar, numero } from "../data/supabase.js";
+import { supabase, rpc, consulta, manejar, numero } from "../data/supabase.js";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const DIAS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]; // dia_semana 1..7 (ISO)
@@ -57,5 +57,21 @@ export const entradasPorDia = manejar(async (req, res) => {
     totales[f.dia_semana - 1] += numero(f.promedio);
   });
   const data = DIAS.map((dia, i) => ({ dia, entradas: Math.round(totales[i]) }));
+  res.json({ ok: true, data });
+});
+// Personas dentro del gimnasio en este momento (igual que la tarjeta de la app)
+export const ocupacionActual = manejar(async (req, res) => {
+  const dentro = await rpc("ocupacion_actual");
+  res.json({ ok: true, dentro: numero(dentro) });
+});
+
+// Ingresos por día de esta semana (vista ingresos_semana, la misma gráfica de la app)
+export const ingresosPorDia = manejar(async (req, res) => {
+  const filas = await consulta(supabase.from("ingresos_semana").select("fecha, dia_semana, total"));
+  const totales = Array(7).fill(0);
+  filas.forEach((f) => {
+    if (f.dia_semana >= 1 && f.dia_semana <= 7) totales[f.dia_semana - 1] += numero(f.total);
+  });
+  const data = DIAS.map((dia, i) => ({ dia, ingresos: totales[i] }));
   res.json({ ok: true, data });
 });

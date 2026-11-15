@@ -1,4 +1,4 @@
-import { supabase, rpc, consulta, manejar, errorHttp, aMinusculas } from "../data/supabase.js";
+import { supabase, rpc, consulta, manejar, errorHttp, aMinusculas, funcionEdge } from "../data/supabase.js";
 
 // Convierte una fila de la vista clientes_lista a la forma que usa el frontend.
 // El nombre completo se separa en nombre (primera palabra) y apellido (resto)
@@ -34,27 +34,131 @@ async function buscarPorId(id) {
   return filas[0];
 }
 
-// Solo planes cuyos servicios siguen activos en la vista Servicios del Encargado (servicio_id no nulo)
-async function nombrePlan(plan) {
+// Igual que la app: el Encargado ve todos los servicios vigentes (menos la visita, que se cobra
+// en "Visitas"); Recepción solo los visibles para Recepción.
+const esEncargado = (req) => ["encargado", "dueno"].includes(req.usuario?.rol);
+const vistaPlanes = (req) => (esEncargado(req) ? "planes_encargado" : "planes_recepcion");
+
+async function nombrePlan(req, plan) {
   if (!plan) return null;
-  const tipos = await consulta(
-    supabase.from("tipos_membresia").select("nombre, servicio_id").not("servicio_id", "is", null)
-  );
+  const tipos = await consulta(supabase.from(vistaPlanes(req)).select("nombre"));
   const tipo = tipos.find((t) => t.nombre.toLowerCase() === String(plan).toLowerCase());
   if (!tipo) throw errorHttp(400, `Plan no valido: ${plan}`);
   return tipo.nombre;
 }
 
-// Planes disponibles (solo los que siguen activos en Servicios del Encargado)
 export const listarPlanes = manejar(async (req, res) => {
   const planes = await consulta(
-    supabase
-      .from("tipos_membresia")
-      .select("id, nombre, precio, duracion_dias, servicio_id")
-      .not("servicio_id", "is", null)
-      .order("precio")
+    supabase.from(vistaPlanes(req)).select("id, nombre, precio, duracion_dias, servicio_id").order("precio")
   );
   res.json({ ok: true, planes: planes.map((p) => ({ ...p, precio: Number(p.precio) })) });
+});
+
+// ---- Contacto de emergencia y datos de salud (solo Recepción y Encargado; la base lo valida) ----
+const TIPOS_SANGRE = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+
+function leerSalud(b) {
+  const s = b?.salud || {};
+  const tipo = TIPOS_SANGRE.includes(s.tipoSangre) ? s.tipoSangre : null;
+  return {
+    fechaNacimiento: s.fechaNacimiento ? String(s.fechaNacimiento).slice(0, 10) : null,
+    tipoSangre: tipo,
+    alergias: String(s.alergias || "").trim(),
+    padecimientos: String(s.padecimientos || "").trim(),
+    medicamentos: String(s.medicamentos || "").trim(),
+  };
+}
+
+async function guardarSalud(actor, clienteId, d) {
+  await rpc("guardar_datos_salud", {
+    p_actor_gmail: actor,
+    p_cliente_id: clienteId,
+    p_fecha_nacimiento: d.fechaNacimiento,
+    p_tipo_sangre: d.tipoSangre,
+    p_alergias: d.alergias,
+    p_padecimientos: d.padecimientos,
+    p_medicamentos: d.medicamentos,
+  });
+}
+
+// Contacto de emergencia + fecha de nacimiento y datos de salud del cliente (para el formulario de edición)
+export const obtenerDetalleCliente = manejar(async (req, res) => {
+  const id = Number(req.params.id);
+  const params = { p_actor_gmail: req.usuario.correo, p_cliente_id: id };
+  const [contacto, salud] = await Promise.all([
+    rpc("contacto_emergencia_cliente", params),
+    rpc("datos_salud_cliente", params),
+  ]);
+  const c = contacto?.[0] || {};
+  const d = salud?.[0] || {};
+  res.json({
+    ok: true,
+    contacto: { nombre: c.r_nombre || "", telefono: c.r_telefono || "" },
+    salud: {
+      fechaNacimiento: d.r_fecha_nacimiento || "",
+      tipoSangre: d.r_tipo_sangre || "",
+      alergias: d.r_alergias || "",
+      padecimientos: d.r_padecimientos || "",
+      medicamentos: d.r_medicamentos || "",
+    },
+  });
+});
+
+// ---- Cancelación de membresía (igual que la app) ----
+// Recepción (o el Encargado) registra la solicitud; la membresía sigue activa hasta que el
+// Encargado la autorice en Reportes. La política (reembolso o no) la calcula la base.
+const TIPOS_CANCELACION = ["VOLUNTARIA", "ERROR_COBRO"];
+
+const aEvaluacion = (e) => ({
+  membresiaId: e.r_membresia_id,
+  plan: e.r_plan,
+  fechaFin: e.r_fecha_fin,
+  fechaPago: e.r_fecha_pago,
+  horas: e.r_horas == null ? null : Number(e.r_horas),
+  ingreso: Boolean(e.r_ingreso),
+  reembolso: Number(e.r_reembolso || 0),
+  metodo: e.r_metodo,
+  regla: e.r_regla,
+  fechaLimite: e.r_fecha_limite,
+});
+
+function tipoCancelacion(v) {
+  const t = String(v || "VOLUNTARIA").toUpperCase();
+  if (!TIPOS_CANCELACION.includes(t)) throw errorHttp(400, "Tipo de cancelación no válido");
+  return t;
+}
+
+// Vista previa: no cambia nada
+export const evaluarCancelacion = manejar(async (req, res) => {
+  const filas = await rpc("evaluar_cancelacion", {
+    p_actor_gmail: req.usuario.correo,
+    p_cliente_id: Number(req.params.id),
+    p_tipo: tipoCancelacion(req.query.tipo),
+  });
+  res.json({ ok: true, evaluacion: filas?.[0] ? aEvaluacion(filas[0]) : null });
+});
+
+export const solicitarCancelacion = manejar(async (req, res) => {
+  const motivo = String(req.body?.motivo || "").trim();
+  if (motivo.length < 3) throw errorHttp(400, "Escribe el motivo de la cancelación");
+  const actual = await buscarPorId(req.params.id);
+  const filas = await rpc("solicitar_cancelacion", {
+    p_actor_gmail: req.usuario.correo,
+    p_cliente_id: actual.id,
+    p_tipo: tipoCancelacion(req.body?.tipo),
+    p_motivo: motivo.slice(0, 300),
+  });
+  res.json({
+    ok: true,
+    evaluacion: filas?.[0] ? aEvaluacion(filas[0]) : null,
+    mensaje: `Solicitud de cancelación de ${actual.nombre} enviada al encargado.`,
+  });
+});
+
+// Ids de clientes con una solicitud de cancelación pendiente (para marcarlos en la lista)
+export const cancelacionesPendientes = manejar(async (req, res) => {
+  const filas = await consulta(supabase.from("solicitudes_cancelacion_pendientes").select("cliente_id"));
+  res.json({ ok: true, ids: [...new Set(filas.map((f) => f.cliente_id))] });
 });
 
 const nombreCompleto = (b) => `${(b.nombre || "").trim()} ${(b.apellido || "").trim()}`.trim();
@@ -95,7 +199,7 @@ export const obtenerFotoCliente = manejar(async (req, res) => {
 // Crea usuario + cliente + membresia (con su pago) usando crear_cliente.
 // La contraseña inicial la pone la base: Axolotl2026 (el cliente la cambia en la app).
 export const crearCliente = manejar(async (req, res) => {
-  const { correo, telefono, plan, metodo } = req.body;
+  const { correo, telefono, plan, metodo, contactoNombre, contactoTelefono } = req.body;
   const nombre = nombreCompleto(req.body);
   if (!nombre || !correo) {
     return res.status(400).json({ ok: false, mensaje: "nombre y correo son obligatorios" });
@@ -104,31 +208,57 @@ export const crearCliente = manejar(async (req, res) => {
     p_nombre: nombre,
     p_telefono: telefono || "",
     p_gmail: correo,
-    p_plan: await nombrePlan(plan),
+    p_plan: await nombrePlan(req, plan),
     p_registrado_por: req.usuario.correo,
+    p_contacto_nombre: String(contactoNombre || "").trim(),
+    p_contacto_telefono: String(contactoTelefono || ""),
     p_metodo: metodo || "Efectivo",
   });
-  const cliente = aCliente(await buscarPorId(filas[0].r_id));
-  res.status(201).json({ ok: true, cliente, mensaje: "Cliente registrado. Contraseña temporal: Axolotl2026" });
+  const nuevoId = filas[0].r_id;
+
+  // El cliente ya quedó creado: si los datos de salud o el correo fallan solo se avisa (igual que la app)
+  const avisos = [];
+  try {
+    await guardarSalud(req.usuario.correo, nuevoId, leerSalud(req.body));
+  } catch {
+    avisos.push("No se pudieron guardar los datos de salud. Edita al cliente para intentarlo de nuevo.");
+  }
+  const fallaCorreo = await funcionEdge("enviar-bienvenida", { gmail: correo });
+  if (fallaCorreo) avisos.push("No se pudo enviar el correo de bienvenida.");
+
+  const cliente = aCliente(await buscarPorId(nuevoId));
+  res.status(201).json({
+    ok: true,
+    cliente,
+    mensaje: "Cliente registrado. Contraseña temporal: Axolotl2026",
+    avisos,
+  });
 });
 
 export const actualizarCliente = manejar(async (req, res) => {
   const actual = await buscarPorId(req.params.id);
-  const { correo, telefono, estadoCuenta } = req.body;
-  await rpc("editar_cliente", {
+  const { correo, telefono, contactoNombre, contactoTelefono } = req.body;
+  // El estado de la cuenta se cambia solo con cambiar_estado_cliente (Encargado)
+  const params = {
     p_id: actual.id,
     p_nombre: nombreCompleto(req.body) || actual.nombre,
     p_telefono: telefono ?? actual.telefono,
     p_gmail: correo || actual.gmail,
-    p_estado: estadoCuenta ? String(estadoCuenta).toUpperCase() : actual.estado,
-  });
+    p_estado: actual.estado,
+  };
+  if (contactoNombre !== undefined || contactoTelefono !== undefined) {
+    params.p_contacto_nombre = String(contactoNombre || "").trim();
+    params.p_contacto_telefono = String(contactoTelefono || "");
+  }
+  await rpc("editar_cliente", params);
+  if (req.body.salud) await guardarSalud(req.usuario.correo, actual.id, leerSalud(req.body));
   res.json({ ok: true, cliente: aCliente(await buscarPorId(actual.id)) });
 });
 
 // Renueva membresía con Efectivo, Tarjeta o Transferencia (con imagen de comprobante)
 export const renovarCliente = manejar(async (req, res) => {
   const actual = await buscarPorId(req.params.id);
-  const plan = await nombrePlan(req.body?.plan || actual.plan);
+  const plan = await nombrePlan(req, req.body?.plan || actual.plan);
   if (!plan) {
     return res.status(400).json({ ok: false, mensaje: "El cliente no tiene plan previo; indica uno" });
   }
@@ -153,71 +283,58 @@ export const renovarCliente = manejar(async (req, res) => {
     });
   }
 
-  await rpc("renovar_membresia", {
+  const vence = await rpc("renovar_membresia", {
     p_cliente_id: actual.id,
     p_plan: plan,
-    p_registrado_por: req.usuario?.correo || "encargado@axolotl.com",
+    p_registrado_por: req.usuario.correo,
     p_metodo: metodo,
   });
-  // Si la cuenta del cliente estaba marcada como INACTIVO, la reactivamos al renovar con Efectivo/Tarjeta
-  if (actual.estado !== "ACTIVO") {
-    await rpc("editar_cliente", {
-      p_id: actual.id,
-      p_nombre: actual.nombre,
-      p_telefono: actual.telefono || "",
-      p_gmail: actual.gmail,
-      p_estado: "ACTIVO",
-    });
+  // Pago en efectivo/tarjeta ya aceptado: el comprobante va al correo registrado del cliente (igual que la app)
+  const avisos = [];
+  if (vence) {
+    const falla = await funcionEdge("enviar-recibo", { cliente_id: actual.id });
+    avisos.push(falla ? `No se pudo enviar el comprobante por correo (${falla}).` : `Comprobante enviado a ${actual.gmail}.`);
   }
-  res.json({ ok: true, cliente: aCliente(await buscarPorId(actual.id)), mensaje: "Membresia renovada" });
+  res.json({ ok: true, cliente: aCliente(await buscarPorId(actual.id)), mensaje: "Membresia renovada", vence, avisos });
 });
 
-// Recepción (y Encargado): desactiva el estatus del cliente y le retira su plan activo
-export const desactivarCliente = manejar(async (req, res) => {
+// Solo Encargado (igual que la app): activa la cuenta o la da de baja.
+// Usa cambiar_estado_cliente, que tambien valida en la base que quien lo pide sea Encargado.
+// Una cuenta INACTIVA no puede entrar al gimnasio, pero se puede reactivar.
+export const cambiarEstadoCliente = manejar(async (req, res) => {
   const actual = await buscarPorId(req.params.id);
-  await rpc("editar_cliente", {
-    p_id: actual.id,
-    p_nombre: actual.nombre,
-    p_telefono: actual.telefono || "",
-    p_gmail: actual.gmail,
-    p_estado: "INACTIVO",
+  const activo = req.body?.activo === true;
+  await rpc("cambiar_estado_cliente", {
+    p_actor_gmail: req.usuario.correo,
+    p_cliente_id: actual.id,
+    p_activo: activo,
   });
   res.json({
     ok: true,
     cliente: aCliente(await buscarPorId(actual.id)),
-    mensaje: "Cliente desactivado y plan retirado",
+    mensaje: activo ? "Cliente reactivado" : "Cliente dado de baja conforme a términos y políticas",
   });
 });
 
-// Solo Encargado / Dueño:
-// - tipo "suspension" (por defecto): da de baja/suspende la cuenta conforme a Términos y Políticas (se elimina tras 365 días de inactividad).
-// - tipo "arco": aplica revocación de consentimiento / Derechos ARCO eliminando todos los datos personales del cliente de inmediato y conservando solo los pagos con fines contables y fiscales.
+// Solo Encargado:
+// - tipo "suspension" (por defecto): da de baja la cuenta (INACTIVA, se puede reactivar).
+//   Si no se reactiva, la base la elimina sola tras 365 dias sin uso (avisando 30 dias antes).
+// - tipo "arco": Derechos ARCO. Usa eliminar_cliente, igual que la app: borra al cliente y todos
+//   sus datos (salud, rostro, accesos, membresias, rutinas, asesorias). No se puede deshacer.
+//   Los pagos se conservan sin cliente para los reportes contables y fiscales.
 export const eliminarCliente = manejar(async (req, res) => {
   const actual = await buscarPorId(req.params.id);
   const tipo = req.body?.tipo || req.query?.tipo || "suspension";
 
   if (tipo === "arco") {
-    await rpc("editar_cliente", {
-      p_id: actual.id,
-      p_nombre: "Cliente Eliminado",
-      p_telefono: "0000000000",
-      p_gmail: `eliminado_${actual.id}@anonimo.axolotl`,
-      p_estado: "INACTIVO",
-      p_contacto_nombre: "Eliminado",
-      p_contacto_telefono: "0000000000",
-    });
-    return res.json({
-      ok: true,
-      mensaje: "Datos personales del cliente eliminados por Derechos ARCO",
-    });
+    await rpc("eliminar_cliente", { p_actor_gmail: req.usuario.correo, p_cliente_id: actual.id });
+    return res.json({ ok: true, mensaje: "Datos personales del cliente eliminados por Derechos ARCO" });
   }
 
-  await rpc("editar_cliente", {
-    p_id: actual.id,
-    p_nombre: actual.nombre,
-    p_telefono: actual.telefono || "",
-    p_gmail: actual.gmail,
-    p_estado: "INACTIVO",
+  await rpc("cambiar_estado_cliente", {
+    p_actor_gmail: req.usuario.correo,
+    p_cliente_id: actual.id,
+    p_activo: false,
   });
   res.json({ ok: true, mensaje: "Cliente dado de baja conforme a términos y políticas" });
 });

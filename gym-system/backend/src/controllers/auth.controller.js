@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { rpc, manejar, aMinusculas } from "../data/supabase.js";
+import { rpc, manejar, aMinusculas, funcionEdge } from "../data/supabase.js";
 
 const SECRET = process.env.JWT_SECRET || "secreto_dev";
 
@@ -51,4 +51,32 @@ export const obtenerMiFoto = manejar(async (req, res) => {
   const b64 = await rpc("foto_personal", { p_gmail: correo });
   const foto = b64 ? (String(b64).startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`) : null;
   res.json({ ok: true, foto });
+});
+
+// ---- Olvidé mi contraseña (igual que la app) ----
+// Paso 1: se revisa que la contraseña nueva cumpla las reglas y se manda un código de 6 dígitos
+// al correo (Edge Function enviar-codigo-contrasena). Para no revelar qué correos existen,
+// la respuesta es la misma aunque el correo no esté registrado.
+export const pedirCodigoContrasena = manejar(async (req, res) => {
+  const correo = String(req.body?.correo || "").trim();
+  const nueva = String(req.body?.nueva || "");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) {
+    return res.status(400).json({ ok: false, mensaje: "Escribe un correo válido" });
+  }
+  const r = await rpc("revisar_contrasena_nueva", { p_nueva: nueva });
+  if (r !== "OK") return res.status(400).json({ ok: false, mensaje: r });
+  const falla = await funcionEdge("enviar-codigo-contrasena", { gmail: correo });
+  if (falla) return res.status(502).json({ ok: false, mensaje: falla });
+  res.json({ ok: true, mensaje: "Si el correo está registrado, te enviamos un código." });
+});
+
+// Paso 2: con el código que llegó al correo se cambia la contraseña sin la actual
+export const restablecerContrasena = manejar(async (req, res) => {
+  const correo = String(req.body?.correo || "").trim();
+  const codigo = String(req.body?.codigo || "").trim();
+  const nueva = String(req.body?.nueva || "");
+  if (!/^\d{6}$/.test(codigo)) return res.status(400).json({ ok: false, mensaje: "El código debe tener 6 dígitos" });
+  const r = await rpc("restablecer_contrasena", { p_gmail: correo, p_codigo: codigo, p_nueva: nueva });
+  if (r !== "OK") return res.status(400).json({ ok: false, mensaje: r });
+  res.json({ ok: true, mensaje: "Contraseña actualizada" });
 });

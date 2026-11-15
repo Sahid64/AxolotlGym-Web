@@ -7,6 +7,7 @@ import Boton from "../components/ui/Boton.jsx";
 import BotonTema from "../components/ui/BotonTema.jsx";
 import BotonIdioma from "../components/ui/BotonIdioma.jsx";
 import FondoGym from "../components/ui/FondoGym.jsx";
+import RecuperarContrasena from "../components/RecuperarContrasena.jsx";
 
 export default function Login() {
   const [correo, setCorreo] = useState("");
@@ -14,6 +15,7 @@ export default function Login() {
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [recuperando, setRecuperando] = useState(false);
   const { login } = useAuth();
   const { tr, traducirMsg } = useIdioma();
   const navigate = useNavigate();
@@ -61,6 +63,15 @@ export default function Login() {
           <form onSubmit={handleSubmit}>
             <Input label={tr.login.correo} type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required />
             <Input label={tr.login.password} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <div className="-mt-1 mb-2 text-right">
+              <button
+                type="button"
+                onClick={() => setRecuperando(true)}
+                className="text-xs text-[var(--c-acento)] hover:underline"
+              >
+                {tr.recuperar.enlace}
+              </button>
+            </div>
 
             {/* Casilla de aceptación de Términos y Condiciones y Políticas de Privacidad */}
             <div className="mt-3 mb-4 flex items-start gap-2.5">
@@ -99,6 +110,7 @@ export default function Login() {
           </form>
         </div>
       </div>
+      <RecuperarContrasena abierto={recuperando} correoInicial={correo} onCerrar={() => setRecuperando(false)} />
     </div>
   );
 }

@@ -2,7 +2,9 @@
 // PERSONAL del gimnasio: recepcion, instructores y encargados.
 // (Los CLIENTES se manejan en clientes.controller.js; no se mezclan aqui.)
 // ==========================================================================
-import { supabase, rpc, consulta, manejar, errorHttp, aMinusculas, aMayusculas, numero } from "../data/supabase.js";
+import {
+  supabase, rpc, consulta, manejar, errorHttp, aMinusculas, aMayusculas, numero, funcionEdge,
+} from "../data/supabase.js";
 
 const TEMPORAL = "Axolotl2026"; // contraseña inicial que asigna la base a personal nuevo
 
@@ -30,6 +32,46 @@ async function buscarEmpleado(id) {
 }
 
 const opcional = (v) => (v === "" || v == null ? null : Number(v));
+
+// ---- Fecha de nacimiento y datos de salud del personal (solo el Encargado; la base lo valida) ----
+const TIPOS_SANGRE = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+
+async function guardarSalud(actor, usuarioId, salud) {
+  const s = salud || {};
+  await rpc("guardar_datos_salud_personal", {
+    p_actor_gmail: actor,
+    p_usuario_id: usuarioId,
+    p_fecha_nacimiento: s.fechaNacimiento ? String(s.fechaNacimiento).slice(0, 10) : null,
+    p_tipo_sangre: TIPOS_SANGRE.includes(s.tipoSangre) ? s.tipoSangre : null,
+    p_alergias: String(s.alergias || "").trim(),
+    p_padecimientos: String(s.padecimientos || "").trim(),
+    p_medicamentos: String(s.medicamentos || "").trim(),
+  });
+}
+
+// GET /api/personal/:id/salud
+export const obtenerSaludPersonal = manejar(async (req, res) => {
+  const filas = await rpc("datos_salud_personal", { p_actor_gmail: req.usuario.correo, p_usuario_id: Number(req.params.id) });
+  const d = filas?.[0] || {};
+  res.json({
+    ok: true,
+    salud: {
+      fechaNacimiento: d.r_fecha_nacimiento || "",
+      tipoSangre: d.r_tipo_sangre || "",
+      alergias: d.r_alergias || "",
+      padecimientos: d.r_padecimientos || "",
+      medicamentos: d.r_medicamentos || "",
+    },
+  });
+});
+
+// PUT /api/personal/:id/foto -> el Encargado toma o actualiza la foto (JPEG en base64), igual que la app
+export const guardarFotoPersonal = manejar(async (req, res) => {
+  const foto = String(req.body?.foto || "").trim().replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+  if (!foto) throw errorHttp(400, "Falta la foto");
+  await rpc("guardar_foto_personal", { p_actor_gmail: req.usuario.correo, p_usuario_id: Number(req.params.id), p_foto: foto });
+  res.json({ ok: true, mensaje: "Foto actualizada" });
+});
 
 // GET /api/personal
 export const listarPersonal = manejar(async (req, res) => {
@@ -73,8 +115,19 @@ export const crearPersonal = manejar(async (req, res) => {
     }
   }
 
+  // La persona ya quedó creada: si la salud o el correo fallan solo se avisa (igual que la app)
+  const avisos = [];
+  if (req.body.salud) {
+    try {
+      await guardarSalud(req.usuario.correo, id, req.body.salud);
+    } catch {
+      avisos.push("No se pudieron guardar los datos de salud. Edita a esta persona para intentarlo de nuevo.");
+    }
+  }
+  if (await funcionEdge("enviar-bienvenida", { gmail: correo })) avisos.push("No se pudo enviar el correo de bienvenida.");
+
   const fila = await buscarEmpleado(id);
-  res.status(201).json({ ok: true, empleado: fila ? await aEmpleado(fila) : { id }, mensaje });
+  res.status(201).json({ ok: true, id, empleado: fila ? await aEmpleado(fila) : { id }, mensaje, avisos });
 });
 
 // PUT /api/personal/:id
@@ -95,6 +148,7 @@ export const actualizarPersonal = manejar(async (req, res) => {
     p_costo: opcional(costoServicio),
     p_max_clientes: opcional(capacidadMaxima),
   });
+  if (req.body.salud) await guardarSalud(req.usuario.correo, id, req.body.salud);
 
   res.json({ ok: true, empleado: await aEmpleado(await buscarEmpleado(id)) });
 });

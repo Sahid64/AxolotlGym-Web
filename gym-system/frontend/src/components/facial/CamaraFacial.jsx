@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useIdioma } from "../../context/IdiomaContext.jsx";
 import Boton from "../ui/Boton.jsx";
 import {
-  cargarReconocedor, detectar, giroCabeza, vectorDeRostro, promedio, similitud, fotoDeRostro,
+  cargarReconocedor, detectar, giroCabeza, vectorDeRostro, promedio, similitud, fotoDeRostro, ojosAbiertos,
 } from "../../biometria/reconocedor.js";
 
 // Mismas reglas que CapturaFacial.kt de la app
@@ -12,6 +12,13 @@ const CONSISTENCIA = 0.8; // todas las muestras deben parecerse al promedio
 const CUADROS_PARA_OLVIDAR = 6; // cuadros sin rostro para aceptar a la siguiente persona
 const INTERVALO_MS = 120;
 const ESPERA_REINTENTO_MS = 2000;
+// Prueba de vida (igual que la app): el rostro debe parpadear (abiertos → cerrados → abiertos).
+// Una foto impresa o en una pantalla no parpadea, así que no sirve para entrar ni para registrar.
+const OJO_ABIERTO = 0.6;
+const OJO_CERRADO = 0.35;
+const ESPERANDO_PARPADEO = 0.9; // avance que se muestra mientras solo falta el parpadeo
+
+const parpadeoNuevo = () => ({ vioAbiertos: false, vioCerrados: false, listo: false });
 
 /**
  * Camara con reconocimiento facial.
@@ -29,7 +36,7 @@ export default function CamaraFacial({ muestrasNecesarias = 3, modo = "continuo"
   const timerRef = useRef(null);
   const activoRef = useRef(false);
   const onRostroRef = useRef(onRostro);
-  const est = useRef({ muestras: [], procesado: false, sinRostro: 0 });
+  const est = useRef({ muestras: [], procesado: false, sinRostro: 0, parpadeo: parpadeoNuevo() });
 
   const [estado, setEstado] = useState("apagada"); // apagada | cargando | activa | error | errorModelos
   const [indicacion, setIndicacion] = useState("posicion");
@@ -46,7 +53,7 @@ export default function CamaraFacial({ muestrasNecesarias = 3, modo = "continuo"
     setEstado("cargando");
     setIndicacion("posicion");
     setProgreso(0);
-    est.current = { muestras: [], procesado: false, sinRostro: 0, esperaHasta: 0 };
+    est.current = { muestras: [], procesado: false, sinRostro: 0, esperaHasta: 0, parpadeo: parpadeoNuevo() };
     try {
       const [motor, stream] = await Promise.all([
         cargarReconocedor().catch((e) => {
@@ -114,6 +121,7 @@ export default function CamaraFacial({ muestrasNecesarias = 3, modo = "continuo"
 
     if (!cara) {
       s.muestras = [];
+      s.parpadeo = parpadeoNuevo(); // se fue la persona: la siguiente debe parpadear de nuevo
       if (s.procesado && ++s.sinRostro >= CUADROS_PARA_OLVIDAR) s.procesado = false; // ya se retiro
       if (!s.procesado) indicar("posicion");
       return;
@@ -142,9 +150,30 @@ export default function CamaraFacial({ muestrasNecesarias = 3, modo = "continuo"
       return indicar("mira");
     }
 
+    // Prueba de vida: abiertos → cerrados → abiertos
+    const ojos = ojosAbiertos(motor, video, cara);
+    if (!ojos) return indicar("mira");
+    const p = s.parpadeo;
+    const abiertos = ojos.izq >= OJO_ABIERTO && ojos.der >= OJO_ABIERTO;
+    const cerrados = ojos.izq <= OJO_CERRADO && ojos.der <= OJO_CERRADO;
+    if (cerrados && p.vioAbiertos) p.vioCerrados = true;
+    if (abiertos) {
+      if (p.vioAbiertos && p.vioCerrados) p.listo = true;
+      p.vioAbiertos = true;
+    }
+    // Con los ojos cerrados o entrecerrados la muestra sale mala: no se usa
+    if (!abiertos) {
+      return indicar(p.listo ? "mira" : "parpadea", s.muestras.length / muestrasNecesarias);
+    }
+
     s.muestras.push(await vectorDeRostro(motor, video, cara));
     if (s.muestras.length < muestrasNecesarias) {
       return indicar("quieto", s.muestras.length / muestrasNecesarias);
+    }
+    // Ya hay muestras suficientes pero falta el parpadeo: se conservan las más recientes
+    if (!p.listo) {
+      while (s.muestras.length > muestrasNecesarias) s.muestras.shift();
+      return indicar("parpadea", ESPERANDO_PARPADEO);
     }
 
     const vector = promedio(s.muestras);
@@ -158,6 +187,7 @@ export default function CamaraFacial({ muestrasNecesarias = 3, modo = "continuo"
     try {
       await onRostroRef.current?.(vector, foto);
       s.procesado = true;
+      s.parpadeo = parpadeoNuevo();
       if (modo === "unico") apagar();
       else indicar("listoRetirate", 1);
     } catch {

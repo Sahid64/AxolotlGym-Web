@@ -22,7 +22,7 @@ const limpiarDecimal = (v) => {
 const Err = ({ msg }) =>
   msg ? <p className="text-xs text-[var(--c-rojo)] -mt-2 mb-3">{msg}</p> : null;
 
-const vacio = { nombre: "", duracion: "", precio: "" };
+const vacio = { nombre: "", duracion: "", precio: "", visible_clientes: true, visible_recepcion: true, es_visita: false };
 
 export default function Servicios() {
   const { tr, traducirMsg, traducirPlan, traducirDuracion } = useIdioma();
@@ -81,6 +81,9 @@ export default function Servicios() {
       nombre: servicio.nombre ?? "",
       duracion: servicio.duracion ?? "",
       precio: servicio.precio ?? "",
+      visible_clientes: servicio.visible_clientes !== false,
+      visible_recepcion: servicio.visible_recepcion !== false,
+      es_visita: Boolean(servicio.es_visita),
     });
     setErrores({});
     setConfirmandoGuardar(false);
@@ -150,6 +153,17 @@ export default function Servicios() {
     { key: "duracion", label: tr.servicios.colDuracion, render: (f) => traducirDuracion(f.duracion) },
     { key: "precio", label: tr.servicios.colPrecio, render: (f) => `$${f.precio}` },
     {
+      key: "visibilidad",
+      label: tr.serviciosExtra.colVisibilidad,
+      render: (f) => {
+        const etiquetas = [];
+        if (f.es_visita) etiquetas.push(tr.serviciosExtra.visita);
+        if (f.visible_clientes) etiquetas.push(tr.serviciosExtra.clientes);
+        if (f.visible_recepcion) etiquetas.push(tr.serviciosExtra.recepcion);
+        return etiquetas.length ? etiquetas.join(" · ") : tr.serviciosExtra.nadie;
+      },
+    },
+    {
       key: "acciones",
       label: tr.acciones,
       render: (f) => (
@@ -196,6 +210,26 @@ export default function Servicios() {
             onChange={cambiar("precio", limpiarDecimal)}
           />
           <Err msg={errores.precio} />
+
+          {/* Para quién se ve el servicio y si es la visita (igual que la app) */}
+          <div className="space-y-2 mb-3">
+            {[
+              ["visible_clientes", tr.serviciosExtra.visibleClientes],
+              ["visible_recepcion", tr.serviciosExtra.visibleRecepcion],
+              ["es_visita", tr.serviciosExtra.esVisita],
+            ].map(([campo, etiqueta]) => (
+              <label key={campo} className="flex items-center gap-2 text-sm text-[var(--c-texto)] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form[campo]}
+                  onChange={(e) => setForm((f) => ({ ...f, [campo]: e.target.checked }))}
+                  className="accent-[var(--c-acento)] w-4 h-4"
+                />
+                {etiqueta}
+              </label>
+            ))}
+            {form.es_visita && <p className="text-xs text-[var(--c-texto-tenue)]">{tr.serviciosExtra.esVisitaNota}</p>}
+          </div>
           <Err msg={errores.general} />
 
           <Boton type="submit" className="w-full mt-2">

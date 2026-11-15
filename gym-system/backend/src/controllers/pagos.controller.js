@@ -37,32 +37,11 @@ export const obtenerComprobante = manejar(async (req, res) => {
 // Al aceptar activa la membresia y el pago entra a ingresos (Dashboard / Reportes).
 export const aceptarPago = manejar(async (req, res) => {
   const pagoId = Number(req.params.id);
-  const pendientes = await consulta(
-    supabase.from("pagos_pendientes").select("cliente_id").eq("id", pagoId).limit(1)
-  );
-  const clienteId = pendientes?.[0]?.cliente_id;
-
   const vence = await rpc("confirmar_pago", {
     p_actor_gmail: req.usuario.correo,
     p_pago_id: pagoId,
     p_aceptar: true,
   });
-
-  if (clienteId) {
-    const filas = await consulta(
-      supabase.from("clientes_lista").select("*").eq("id", Number(clienteId)).limit(1)
-    );
-    const actual = filas?.[0];
-    if (actual && actual.estado !== "ACTIVO") {
-      await rpc("editar_cliente", {
-        p_id: actual.id,
-        p_nombre: actual.nombre,
-        p_telefono: actual.telefono || "",
-        p_gmail: actual.gmail,
-        p_estado: "ACTIVO",
-      });
-    }
-  }
 
   res.json({ ok: true, vence, mensaje: "Pago validado" });
 });

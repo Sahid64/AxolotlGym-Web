@@ -6,6 +6,33 @@ import Badge from "../../components/ui/Badge.jsx";
 import Boton from "../../components/ui/Boton.jsx";
 import Modal from "../../components/ui/Modal.jsx";
 import Input from "../../components/ui/Input.jsx";
+import CamposSalud, {
+  saludVacia,
+  fechaNacimientoValida,
+  saludParaEnviar,
+} from "../../components/clientes/CamposSalud.jsx";
+
+// Reduce la foto a JPEG de máximo 480 px (las fotos se guardan en base64 en la base)
+function fotoAJpeg(archivo) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(archivo);
+    img.onload = () => {
+      const escala = Math.min(1, 480 / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("imagen"));
+    };
+    img.src = url;
+  });
+}
 
 const campo =
   "bg-[var(--c-campo)] border border-[var(--c-borde)] rounded-md px-3 py-2 text-sm text-[var(--c-texto)] " +
@@ -45,7 +72,17 @@ function SelectPaleta({ label, value, onChange, options }) {
   );
 }
 
-const vacio = { nombre: "", telefono: "", correo: "", password: "", rol: "recepcion", estado: "activo", costoServicio: "", capacidadMaxima: "" };
+const vacio = {
+  nombre: "",
+  telefono: "",
+  correo: "",
+  password: "",
+  rol: "recepcion",
+  estado: "activo",
+  costoServicio: "",
+  capacidadMaxima: "",
+  salud: saludVacia,
+};
 
 // PERSONAL del gimnasio: recepcion, instructores y encargados (los clientes van en Clientes)
 export default function Personal() {
@@ -65,6 +102,10 @@ export default function Personal() {
   // Confirmación antes de guardar (crear / editar) y antes de eliminar
   const [confirmandoGuardar, setConfirmandoGuardar] = useState(false);
   const [empleadoAEliminar, setEmpleadoAEliminar] = useState(null);
+
+  // Foto del personal (el Encargado la sube, igual que en la app la toma con la cámara)
+  const [fotoNueva, setFotoNueva] = useState("");
+  const [cargandoSalud, setCargandoSalud] = useState(false);
 
   const vNombre = (v, etiqueta) => {
     const t = v.trim();
@@ -129,6 +170,7 @@ export default function Personal() {
 
   function abrirNuevo() {
     setEditandoId(null);
+    setFotoNueva("");
     setForm(vacio);
     setErrores({});
     setConfirmandoGuardar(false);
@@ -146,10 +188,32 @@ export default function Personal() {
       estado: empleado.estado ?? "activo",
       costoServicio: empleado.costoServicio ?? "",
       capacidadMaxima: empleado.capacidadMaxima ?? "",
+      salud: saludVacia,
     });
+    setFotoNueva("");
     setErrores({});
     setConfirmandoGuardar(false);
     setModalAbierto(true);
+
+    // Fecha de nacimiento y datos de salud que ya tiene (igual que la app)
+    setCargandoSalud(true);
+    api
+      .get(`/personal/${empleado.id}/salud`)
+      .then(({ data }) => setForm((f) => ({ ...f, salud: { ...saludVacia, ...data.salud } })))
+      .catch(() => {})
+      .finally(() => setCargandoSalud(false));
+  }
+
+  async function elegirFoto(e) {
+    const archivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!archivo) return;
+    try {
+      setFotoNueva(await fotoAJpeg(archivo));
+      setErrores((er) => ({ ...er, foto: "" }));
+    } catch {
+      setErrores((er) => ({ ...er, foto: tr.personalExtra.errorFoto }));
+    }
   }
 
   function cerrarModal() {
@@ -172,6 +236,8 @@ export default function Personal() {
       password: editandoId ? "" : vPassword(form.password),
       costoServicio: esInstructor ? vMonto(form.costoServicio, tr.personal.costoServicio) : "",
       capacidadMaxima: esInstructor ? vEntero(form.capacidadMaxima, tr.personal.capacidadMaxima) : "",
+      // En la app la fecha de nacimiento del personal siempre es obligatoria
+      salud_fechaNacimiento: fechaNacimientoValida(form.salud.fechaNacimiento) ? "" : tr.salud.valFecha,
     };
     setErrores(errs);
     if (Object.values(errs).some(Boolean)) return;
@@ -185,9 +251,11 @@ export default function Personal() {
       ...form,
       nombre: form.nombre.trim(),
       correo: form.correo.trim(),
+      salud: saludParaEnviar(form.salud),
     };
 
     try {
+      let id = editandoId;
       if (editandoId) {
         // al editar no se manda contraseña
         const { password, ...sinPassword } = datos;
@@ -195,7 +263,16 @@ export default function Personal() {
         setAviso("");
       } else {
         const { data } = await api.post("/personal", datos);
-        setAviso(traducirMsg(data.mensaje) || "");
+        id = data.id;
+        setAviso([data.mensaje, ...(data.avisos || [])].map(traducirMsg).filter(Boolean).join(" "));
+      }
+      if (fotoNueva && id) {
+        try {
+          await api.put(`/personal/${id}/foto`, { foto: fotoNueva });
+          setFotos((prev) => ({ ...prev, [id]: fotoNueva }));
+        } catch (err) {
+          setAviso((a) => `${a} ${traducirMsg(err.response?.data?.mensaje) || tr.personalExtra.errorFoto}`.trim());
+        }
       }
     } catch (err) {
       setConfirmandoGuardar(false);
@@ -378,6 +455,34 @@ export default function Personal() {
               <Err msg={errores.capacidadMaxima} />
             </>
           )}
+
+          {cargandoSalud && <p className="text-xs text-[var(--c-texto-tenue)] mb-3">{tr.salud.cargando}</p>}
+          <CamposSalud
+            salud={form.salud}
+            fechaObligatoria
+            errorFecha={errores.salud_fechaNacimiento}
+            onChange={(salud) => {
+              setForm((f) => ({ ...f, salud }));
+              setErrores((er) => ({ ...er, salud_fechaNacimiento: "" }));
+            }}
+          />
+
+          {/* Foto de perfil */}
+          <p className="text-sm font-semibold text-[var(--c-texto)] mt-4 mb-2">{tr.personalExtra.foto}</p>
+          <div className="flex items-center gap-3 mb-3">
+            {(fotoNueva || (editandoId && fotos[editandoId])) && (
+              <img
+                src={fotoNueva || fotos[editandoId]}
+                alt=""
+                className="w-14 h-14 rounded-full border border-[var(--c-acento)] object-cover"
+              />
+            )}
+            <label className="cursor-pointer text-sm px-3 py-1.5 rounded-lg border border-[var(--c-acento)] text-[var(--c-acento)] hover:bg-[var(--c-acento-10)]">
+              {tr.personalExtra.elegirFoto}
+              <input type="file" accept="image/*" capture="user" className="hidden" onChange={elegirFoto} />
+            </label>
+          </div>
+          <Err msg={errores.foto} />
 
           <Err msg={errores.general} />
 

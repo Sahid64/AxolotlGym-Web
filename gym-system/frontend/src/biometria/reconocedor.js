@@ -16,6 +16,9 @@ const MP_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wa
 const MODELO_DETECTOR =
   "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
 const MODELO_ROSTRO = "/models/mobilefacenet.tflite"; // copiado de app/src/main/assets
+// Puntos de la cara con "blendshapes": dice qué tan cerrados están los ojos (prueba de vida)
+const MODELO_PUNTOS =
+  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 
 export const DIMENSION = 192;
 const TAM = 112; // entrada de MobileFaceNet
@@ -53,16 +56,22 @@ export function cargarReconocedor() {
 
       const vision = await import(/* @vite-ignore */ MP_VISION);
       const archivos = await vision.FilesetResolver.forVisionTasks(MP_WASM);
-      const [detector, modelo] = await Promise.all([
+      const [detector, modelo, puntos] = await Promise.all([
         vision.FaceDetector.createFromOptions(archivos, {
           baseOptions: { modelAssetPath: MODELO_DETECTOR, delegate: "CPU" },
           runningMode: "VIDEO",
           minDetectionConfidence: 0.6,
         }),
         tflite.loadTFLiteModel(MODELO_ROSTRO, { numThreads: 1 }),
+        vision.FaceLandmarker.createFromOptions(archivos, {
+          baseOptions: { modelAssetPath: MODELO_PUNTOS, delegate: "CPU" },
+          runningMode: "VIDEO",
+          numFaces: 2,
+          outputFaceBlendshapes: true,
+        }),
       ]);
       const lote = modelo.inputs?.[0]?.shape?.[0] || 1; // algunos MobileFaceNet piden 2 imagenes
-      return { tf, detector, modelo, lote };
+      return { tf, detector, modelo, lote, puntos };
     })().catch((e) => {
       cargando = null; // permite reintentar
       throw e;
@@ -84,6 +93,33 @@ export function detectar(motor, video) {
     // 0 ojo derecho, 1 ojo izquierdo, 2 nariz, 3 boca, 4 oreja der., 5 oreja izq.
     puntos: (d.keypoints || []).map((k) => ({ x: k.x * w, y: k.y * h })),
   }));
+}
+
+/**
+ * Probabilidad de ojo ABIERTO (0..1) de cada ojo del rostro indicado, como ML Kit en la app.
+ * MediaPipe da "eyeBlink" (1 = cerrado), así que se invierte. null si no se pudo medir.
+ */
+export function ojosAbiertos(motor, video, rostro) {
+  const r = motor.puntos.detectForVideo(video, performance.now());
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+  const cx = rostro.x + rostro.ancho / 2;
+  const cy = rostro.y + rostro.alto / 2;
+  // Se usa la malla de puntos cuyo centro cae dentro de la caja del rostro elegido
+  const i = (r.faceLandmarks || []).findIndex((pts) => {
+    const xs = pts.map((p) => p.x * w);
+    const ys = pts.map((p) => p.y * h);
+    const mx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const my = (Math.min(...ys) + Math.max(...ys)) / 2;
+    return Math.abs(mx - cx) < rostro.ancho / 2 && Math.abs(my - cy) < rostro.alto / 2;
+  });
+  const formas = i >= 0 ? r.faceBlendshapes?.[i]?.categories : null;
+  if (!formas) return null;
+  const valor = (nombre) => formas.find((c) => c.categoryName === nombre)?.score;
+  const izq = valor("eyeBlinkLeft");
+  const der = valor("eyeBlinkRight");
+  if (izq == null || der == null) return null;
+  return { izq: 1 - izq, der: 1 - der };
 }
 
 /** Giro aproximado de la cabeza (grados) a partir de ojos y nariz. */

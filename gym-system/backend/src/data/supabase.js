@@ -55,3 +55,30 @@ export const manejar = (fn) => (req, res, next) => Promise.resolve(fn(req, res, 
 export const aMinusculas = (v) => (v ? String(v).toLowerCase() : v);
 export const aMayusculas = (v) => (v ? String(v).toUpperCase() : v);
 export const numero = (v) => (v == null ? 0 : Number(v));
+
+// Llama una Edge Function de Supabase (correos: bienvenida, recibo, comunicados), igual que la app.
+// Regresa null si salió bien; si no, el motivo. Nunca lanza: el correo no debe tumbar la operación.
+export async function funcionEdge(nombre, cuerpo = {}) {
+  try {
+    const r = await fetch(`${SUPABASE_URL.replace(/\/+$/, "")}/functions/v1/${nombre}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+      },
+      body: JSON.stringify(cuerpo),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (r.ok) return null;
+    const texto = await r.text();
+    let motivo = texto;
+    try {
+      const j = JSON.parse(texto);
+      motivo = j.motivo || j.message || texto;
+    } catch {}
+    return (motivo || `HTTP ${r.status}`).slice(0, 300);
+  } catch (e) {
+    return `Sin conexión con el servidor de correo (${e.message})`;
+  }
+}

@@ -14,7 +14,10 @@ import dashboardRoutes from "./src/routes/dashboard.routes.js";
 import asesoriasRoutes from "./src/routes/asesorias.routes.js";
 import qrRoutes from "./src/routes/qr.routes.js";
 import accesoRoutes from "./src/routes/acceso.routes.js";
-import pagosRoutes from "./src/routes/pagos.routes.js";   
+import pagosRoutes from "./src/routes/pagos.routes.js";
+import visitasRoutes from "./src/routes/visitas.routes.js";
+import avisosRoutes from "./src/routes/avisos.routes.js";
+import perfilRoutes from "./src/routes/perfil.routes.js";
 
 const app = express();
 app.use(cors());
@@ -32,7 +35,10 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/asesorias", asesoriasRoutes);
 app.use("/api/qr", qrRoutes);
 app.use("/api/acceso", accesoRoutes); // reconocimiento facial (toma de lista)
-app.use("/api/pagos", pagosRoutes);                    
+app.use("/api/pagos", pagosRoutes);
+app.use("/api/visitas", visitasRoutes); // pase de un día (Recepción y Encargado)
+app.use("/api/avisos", avisosRoutes); // comunicados por correo (Encargado)
+app.use("/api/perfil", perfilRoutes); // perfil propio del personal
 
 app.get("/", (req, res) => {
   res.json({ ok: true, mensaje: "API Gym System activa" });

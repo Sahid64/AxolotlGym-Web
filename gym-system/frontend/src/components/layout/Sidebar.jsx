@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import api from "../../api/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useIdioma } from "../../context/IdiomaContext.jsx";
 import BotonTema from "../ui/BotonTema.jsx";
@@ -8,8 +9,17 @@ import Modal from "../ui/Modal.jsx";
 
 export default function Sidebar() {
   const { usuario, logout } = useAuth();
-  const { idioma, alternarIdioma, tr } = useIdioma();
+  const { alternarIdioma, tr } = useIdioma();
   const [confirmarSalida, setConfirmarSalida] = useState(false);
+  const [miFoto, setMiFoto] = useState(null);
+
+  useEffect(() => {
+    if (!usuario?.correo) return;
+    api
+      .get("/auth/mi-foto")
+      .then(({ data }) => setMiFoto(data?.foto || null))
+      .catch(() => setMiFoto(null));
+  }, [usuario?.correo]);
 
   const menuPorRol = {
     recepcion: [
@@ -106,9 +116,17 @@ export default function Sidebar() {
           {/* Pie fijo: Usuario, tema y cerrar sesión */}
           <div className="shrink-0 px-4 pt-2 pb-4 border-t border-[var(--c-borde-20)]">
             <div className="flex items-center gap-3 px-2 mb-2.5">
-              <div className="w-9 h-9 shrink-0 rounded-full border border-[var(--c-acento)] bg-[var(--c-fondo)] flex items-center justify-center text-sm font-bold text-[var(--c-acento)]">
-                {inicial}
-              </div>
+              {miFoto ? (
+                <img
+                  src={miFoto}
+                  alt={usuario?.nombre || ""}
+                  className="w-9 h-9 shrink-0 rounded-full border border-[var(--c-acento)] object-cover bg-[var(--c-fondo)]"
+                />
+              ) : (
+                <div className="w-9 h-9 shrink-0 rounded-full border border-[var(--c-acento)] bg-[var(--c-fondo)] flex items-center justify-center text-sm font-bold text-[var(--c-acento)]">
+                  {inicial}
+                </div>
+              )}
               <p className="flex-1 text-sm text-[var(--c-texto)] truncate text-center font-medium">
                 {usuario?.nombre}
               </p>

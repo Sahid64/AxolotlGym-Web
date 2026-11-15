@@ -45,6 +45,33 @@ const textos = {
     // Fondo animado
     palabrasFondo: "SUDOR · DISCIPLINA · FUERZA · CONSTANCIA · RESULTADOS · ",
 
+    // Página de presentación
+    inicio: {
+      iniciarSesion: "Iniciar sesión",
+      insignia: "AXOLOTL FITNESS CLUB",
+      titulo: "Tu mejor versión empieza aquí",
+      descripcion: "Disciplina, constancia y resultados. Gestiona tu gimnasio y entrena con nosotros desde cualquier dispositivo.",
+      descargarApp: "Descargar app para Android",
+      descargarSub: "Archivo APK · Gratis",
+      accederSistema: "Acceso al sistema",
+      caracteristicas: [
+        { titulo: "Reconocimiento facial", texto: "Entradas rápidas y seguras, sin tarjetas ni filas." },
+        { titulo: "Membresías y pagos", texto: "Control claro de planes, vencimientos y cobros." },
+        { titulo: "Todo en un solo lugar", texto: "Recepción, encargados y reportes siempre sincronizados." },
+      ],
+      carrusel: [
+        "Tu mejor versión empieza aquí",
+        "Disciplina que transforma",
+        "Disciplina, constancia y resultados",
+        "Un espacio para tus objetivos",
+        "Somos una comunidad",
+        "Entrena hoy por el mañana que quieres",
+      ],
+      verImagen: "Ver imagen",
+      pie: "Todos los derechos reservados.",
+    },
+    volverInicio: "← Volver a la página principal",
+
     // Login
     login: {
       subtitulo: "Acceso para recepción / encargado",
@@ -434,6 +461,33 @@ const textos = {
 
     // Animated background
     palabrasFondo: "SWEAT · DISCIPLINE · STRENGTH · CONSISTENCY · RESULTS · ",
+
+    // Landing page
+    inicio: {
+      iniciarSesion: "Sign in",
+      insignia: "AXOLOTL FITNESS CLUB",
+      titulo: "Your best self starts here",
+      descripcion: "Discipline, consistency and results. Manage your gym and train with us from any device.",
+      descargarApp: "Download Android app",
+      descargarSub: "APK file · Free",
+      accederSistema: "System access",
+      caracteristicas: [
+        { titulo: "Facial recognition", texto: "Fast, secure check-ins with no cards and no lines." },
+        { titulo: "Memberships & payments", texto: "Clear control of plans, expirations and charges." },
+        { titulo: "Everything in one place", texto: "Reception, managers and reports always in sync." },
+      ],
+      carrusel: [
+        "Your best self starts here",
+        "Discipline that transforms",
+        "Discipline, consistency and results",
+        "A space for your goals",
+        "We are a community",
+        "Train today for the tomorrow you want",
+      ],
+      verImagen: "View image",
+      pie: "All rights reserved.",
+    },
+    volverInicio: "← Back to home page",
 
     // Login
     login: {

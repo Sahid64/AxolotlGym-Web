@@ -110,6 +110,12 @@ export default function Login() {
           </form>
         </div>
       </div>
+      <Link
+        to="/"
+        className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 text-xs text-[var(--c-texto-sec)] hover:text-[var(--c-acento-texto)] hover:underline"
+      >
+        {tr.volverInicio}
+      </Link>
       <RecuperarContrasena abierto={recuperando} correoInicial={correo} onCerrar={() => setRecuperando(false)} />
     </div>
   );

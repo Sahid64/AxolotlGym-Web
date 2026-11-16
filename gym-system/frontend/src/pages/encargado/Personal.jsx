@@ -76,7 +76,6 @@ const vacio = {
   nombre: "",
   telefono: "",
   correo: "",
-  password: "",
   rol: "recepcion",
   estado: "activo",
   costoServicio: "",
@@ -119,10 +118,6 @@ export default function Personal() {
     const t = v.trim();
     if (!t) return tr.val.correoObligatorio;
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t) ? "" : tr.val.correoInvalido;
-  };
-  const vPassword = (v) => {
-    if (!v) return tr.val.passwordObligatoria;
-    return v.length >= 8 ? "" : tr.val.passwordMin8;
   };
   const vMonto = (v, etiqueta) => {
     if (v === "" || v == null) return tr.val.esObligatorio(etiqueta);
@@ -183,7 +178,6 @@ export default function Personal() {
       nombre: empleado.nombre ?? "",
       telefono: empleado.telefono ?? "",
       correo: empleado.correo ?? "",
-      password: "",
       rol: empleado.rol ?? "recepcion",
       estado: empleado.estado ?? "activo",
       costoServicio: empleado.costoServicio ?? "",
@@ -233,7 +227,6 @@ export default function Personal() {
       nombre: vNombre(form.nombre, tr.personal.nombre),
       telefono: vTelefono(form.telefono),
       correo: vCorreo(form.correo),
-      password: editandoId ? "" : vPassword(form.password),
       costoServicio: esInstructor ? vMonto(form.costoServicio, tr.personal.costoServicio) : "",
       capacidadMaxima: esInstructor ? vEntero(form.capacidadMaxima, tr.personal.capacidadMaxima) : "",
       // En la app la fecha de nacimiento del personal siempre es obligatoria
@@ -257,11 +250,10 @@ export default function Personal() {
     try {
       let id = editandoId;
       if (editandoId) {
-        // al editar no se manda contraseña
-        const { password, ...sinPassword } = datos;
-        await api.put(`/personal/${editandoId}`, sinPassword);
+        await api.put(`/personal/${editandoId}`, datos);
         setAviso("");
       } else {
+        // Sin contraseña: la base asigna la temporal y el backend manda el correo de bienvenida
         const { data } = await api.post("/personal", datos);
         id = data.id;
         setAviso([data.mensaje, ...(data.avisos || [])].map(traducirMsg).filter(Boolean).join(" "));
@@ -410,10 +402,7 @@ export default function Personal() {
           <Err msg={errores.correo} />
 
           {!editandoId && (
-            <>
-              <Input label={tr.personal.passwordInicial} value={form.password} onChange={cambiar("password")} />
-              <Err msg={errores.password} />
-            </>
+            <p className="text-xs text-[var(--c-texto-sec)] -mt-1 mb-3">{tr.personal.notaCorreoBienvenida}</p>
           )}
 
           <SelectPaleta
@@ -423,7 +412,7 @@ export default function Personal() {
             options={[
               { value: "recepcion", label: tr.roles.recepcion },
               { value: "instructor", label: tr.roles.instructor },
-              ...(form.rol === "encargado" ? [{ value: "encargado", label: tr.roles.encargado }] : []),
+              { value: "encargado", label: tr.roles.encargado },
             ]}
           />
           <SelectPaleta

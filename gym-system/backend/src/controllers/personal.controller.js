@@ -88,11 +88,15 @@ export const obtenerFotoPersonal = manejar(async (req, res) => {
   res.json({ ok: true, foto });
 });
 
-// POST /api/personal
-// crear_personal crea la cuenta con la contraseña temporal; si la web manda una
-// contraseña, se cambia enseguida (debe cumplir las reglas de seguridad de la base).
+// POST /api/personal  (mismo flujo que UsuariosScreen.kt de la app)
+// 1. crear_personal crea la cuenta con la contraseña temporal (Axolotl2026).
+// 2. La Edge Function "enviar-bienvenida" (la misma que usa la app) le manda al nuevo
+//    miembro el correo con su rol, su contraseña temporal y cómo cambiarla en Perfil.
+// El Encargado ya no escribe contraseña: si llega "password" en el body se ignora.
+// Importante: la contraseña NO se cambia aquí, porque la Edge Function solo envía el
+// correo si la cuenta todavía tiene la contraseña inicial.
 export const crearPersonal = manejar(async (req, res) => {
-  const { nombre, telefono, correo, password, rol, costoServicio, capacidadMaxima } = req.body;
+  const { nombre, telefono, correo, rol, costoServicio, capacidadMaxima } = req.body;
   if (!nombre || !correo || !rol) {
     return res.status(400).json({ ok: false, mensaje: "nombre, correo y rol son obligatorios" });
   }
@@ -105,16 +109,6 @@ export const crearPersonal = manejar(async (req, res) => {
     p_max_clientes: opcional(capacidadMaxima),
   });
 
-  let mensaje = `Se agrego al personal. Contraseña temporal: ${TEMPORAL}`;
-  if (password && password !== TEMPORAL) {
-    try {
-      const r = await rpc("cambiar_contrasena", { p_gmail: correo, p_actual: TEMPORAL, p_nueva: password });
-      mensaje = r === "OK" ? "Se agrego al personal" : `Se agrego al personal con contraseña temporal ${TEMPORAL}. ${r}`;
-    } catch (err) {
-      mensaje = `Se agrego al personal con contraseña temporal ${TEMPORAL}. ${err.message}`;
-    }
-  }
-
   // La persona ya quedó creada: si la salud o el correo fallan solo se avisa (igual que la app)
   const avisos = [];
   if (req.body.salud) {
@@ -124,10 +118,25 @@ export const crearPersonal = manejar(async (req, res) => {
       avisos.push("No se pudieron guardar los datos de salud. Edita a esta persona para intentarlo de nuevo.");
     }
   }
-  if (await funcionEdge("enviar-bienvenida", { gmail: correo })) avisos.push("No se pudo enviar el correo de bienvenida.");
+
+  // funcionEdge nunca lanza: regresa null si el correo salió o el motivo si no
+  const motivoCorreo = await funcionEdge("enviar-bienvenida", { gmail: String(correo).trim() });
+  if (motivoCorreo) console.error(`enviar-bienvenida (${correo}):`, motivoCorreo);
+  const correoEnviado = !motivoCorreo;
+  const mensaje = correoEnviado
+    ? "Personal registrado. Su rol y su contraseña temporal se enviaron a su correo."
+    : `Personal registrado, pero no se pudo enviar el correo de bienvenida. Contraseña temporal: ${TEMPORAL}`;
 
   const fila = await buscarEmpleado(id);
-  res.status(201).json({ ok: true, id, empleado: fila ? await aEmpleado(fila) : { id }, mensaje, avisos });
+  res.status(201).json({
+    ok: true,
+    id,
+    empleado: fila ? await aEmpleado(fila) : { id },
+    correoEnviado,
+    motivoCorreo: motivoCorreo || null,
+    mensaje,
+    avisos,
+  });
 });
 
 // PUT /api/personal/:id

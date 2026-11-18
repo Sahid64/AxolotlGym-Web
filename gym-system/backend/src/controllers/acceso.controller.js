@@ -1,7 +1,7 @@
 import { supabase, rpc, consulta, manejar, errorHttp } from "../data/supabase.js";
 
 // Acceso por reconocimiento facial (toma de lista).
-// Usa las mismas funciones de Supabase que la app Android (sql/reconocimiento_facial.sql):
+// Usa las mismas funciones de Supabase que la app Android, ya creadas en la base:
 // el navegador calcula el vector del rostro (192 numeros, MobileFaceNet) y aqui solo se compara.
 // No se guardan fotos para identificar: solo viaja el vector.
 

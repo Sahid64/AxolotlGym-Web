@@ -335,6 +335,11 @@ const textos = {
       confirmarEliminarTitulo: "Confirmar eliminación",
       confirmarEliminarMsg: (nombre) => `¿Estás seguro de que deseas eliminar a ${nombre} del personal?`,
       confirmarEliminarBtn: "Sí, eliminar",
+      faltanDatos: "A este registro le faltan datos obligatorios (marcados en rojo). Complétalos para poder guardar los cambios.",
+      salirSinGuardarTitulo: "¿Descartar cambios?",
+      salirSinGuardarMsg: "Tienes cambios sin guardar. Si sales ahora, se perderán.",
+      seguirEditando: "Seguir editando",
+      salirSinGuardarBtn: "Salir sin guardar",
     },
 
     // Servicios
@@ -752,6 +757,11 @@ const textos = {
       confirmarEliminarTitulo: "Confirm deletion",
       confirmarEliminarMsg: (nombre) => `Are you sure you want to remove ${nombre} from the staff?`,
       confirmarEliminarBtn: "Yes, delete",
+      faltanDatos: "This record is missing some required data (marked in red). Complete it to save the changes.",
+      salirSinGuardarTitulo: "Discard changes?",
+      salirSinGuardarMsg: "You have unsaved changes. If you leave now, they will be lost.",
+      seguirEditando: "Keep editing",
+      salirSinGuardarBtn: "Leave without saving",
     },
 
     // Services

@@ -1,5 +1,5 @@
 // Movimientos por rol (bitácora de auditoría). Solo el Encargado.
-// Lee la función SQL movimientos_de_rol (sql/auditoria.sql), que ya valida que quien
+// Lee la función SQL movimientos_de_rol de Supabase, que ya valida que quien
 // consulta sea Encargado. La paginación es por bloques con p_limite / p_offset.
 import { rpc, manejar, aMayusculas } from "../data/supabase.js";
 

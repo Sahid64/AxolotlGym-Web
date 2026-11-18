@@ -3,7 +3,7 @@ import { supabase, rpc, consulta, manejar, numero, errorHttp } from "../data/sup
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const DIAS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]; // dia_semana 1..7 (ISO)
 
-// Conteo de activos/inactivos hecho en la base (vista resumen_clientes de sql/optimizacion_rendimiento.sql).
+// Conteo de activos/inactivos hecho en la base (vista resumen_clientes de Supabase).
 // Antes se descargaban TODOS los clientes para contarlos en Node. Si la vista aún no existe, se usa lo anterior.
 let vistaResumenClientes = true;
 

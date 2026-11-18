@@ -8,7 +8,7 @@ import {
 
 const TEMPORAL = "Axolotl2026"; // contraseña inicial que asigna la base a personal nuevo
 
-// La vista personal_lista_detalle (sql/optimizacion_rendimiento.sql) ya trae teléfono, costo y cupo:
+// La vista personal_lista_detalle de Supabase ya trae teléfono, costo y cupo:
 // antes se llamaba detalle_personal una vez por cada persona (N+1).
 // Si la vista aún no existe en Supabase, se usa personal_lista + detalle_personal como antes.
 let vistaDetalle = true;
@@ -102,7 +102,7 @@ export const listarPersonal = manejar(async (req, res) => {
 });
 
 // GET /api/personal/fotos?ids=1,2,3 -> { fotos: { id: dataUrl } }  (una petición para toda la tabla)
-// Usa fotos_personal (sql/optimizacion_rendimiento.sql); si aún no existe, cae a foto_personal por correo.
+// Usa la funcion fotos_personal de Supabase; si aún no existe, cae a foto_personal por correo.
 export const obtenerFotosPersonal = manejar(async (req, res) => {
   const ids = [...new Set(String(req.query.ids || "").split(",").map(Number))]
     .filter((n) => Number.isInteger(n) && n > 0)

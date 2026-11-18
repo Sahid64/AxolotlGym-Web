@@ -102,6 +102,13 @@ export default function Personal() {
   const [confirmandoGuardar, setConfirmandoGuardar] = useState(false);
   const [empleadoAEliminar, setEmpleadoAEliminar] = useState(null);
 
+  // Salir del formulario: si no se cambió nada se cierra directo; si hay cambios, se pregunta
+  const inicialRef = useRef(""); // cómo estaba el formulario al abrirlo
+  const pedidoRef = useRef(0); // evita que una respuesta tardía llene otro formulario
+  const [confirmandoSalir, setConfirmandoSalir] = useState(false);
+  // Al editar: el registro tiene datos que faltan o están mal (ej. sin fecha de nacimiento)
+  const [faltanDatos, setFaltanDatos] = useState(false);
+
   // Foto del personal (el Encargado la sube, igual que en la app la toma con la cámara)
   const [fotoNueva, setFotoNueva] = useState("");
   const [cargandoSalud, setCargandoSalud] = useState(false);
@@ -162,39 +169,81 @@ export default function Personal() {
     setErrores((er) => ({ ...er, [nombre]: "" }));
   };
 
+  // Revisa todo el formulario; regresa { campo: mensaje } solo con los que tienen error
+  function validar(f) {
+    const esInstructor = f.rol === "instructor";
+    const errs = {
+      nombre: vNombre(f.nombre, tr.personal.nombre),
+      telefono: vTelefono(f.telefono),
+      correo: vCorreo(f.correo),
+      costoServicio: esInstructor ? vMonto(f.costoServicio, tr.personal.costoServicio) : "",
+      capacidadMaxima: esInstructor ? vEntero(f.capacidadMaxima, tr.personal.capacidadMaxima) : "",
+      // En la app la fecha de nacimiento del personal siempre es obligatoria
+      salud_fechaNacimiento: fechaNacimientoValida(f.salud.fechaNacimiento) ? "" : tr.salud.valFecha,
+    };
+    return Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
+  }
+
+  const instantanea = (f, foto) => JSON.stringify({ ...f, foto });
+
   function abrirNuevo() {
     setEditandoId(null);
     setFotoNueva("");
     setForm(vacio);
+    inicialRef.current = instantanea(vacio, "");
     setErrores({});
+    setFaltanDatos(false);
     setConfirmandoGuardar(false);
+    setConfirmandoSalir(false);
     setModalAbierto(true);
   }
 
   function abrirEditar(empleado) {
-    setEditandoId(empleado.id);
-    setForm({
+    const datos = {
       nombre: empleado.nombre ?? "",
       telefono: empleado.telefono ?? "",
       correo: empleado.correo ?? "",
       rol: empleado.rol ?? "recepcion",
       estado: empleado.estado ?? "activo",
-      costoServicio: empleado.costoServicio ?? "",
-      capacidadMaxima: empleado.capacidadMaxima ?? "",
+      // 0 o vacío = no lo tiene registrado (se muestra vacío para que se note que falta)
+      costoServicio: empleado.costoServicio ? String(empleado.costoServicio) : "",
+      capacidadMaxima: empleado.capacidadMaxima ? String(empleado.capacidadMaxima) : "",
       salud: saludVacia,
-    });
+    };
+    setEditandoId(empleado.id);
+    setForm(datos);
+    inicialRef.current = instantanea(datos, "");
     setFotoNueva("");
     setErrores({});
+    setFaltanDatos(false);
     setConfirmandoGuardar(false);
+    setConfirmandoSalir(false);
     setModalAbierto(true);
 
     // Fecha de nacimiento y datos de salud que ya tiene (igual que la app)
+    const pedido = ++pedidoRef.current;
     setCargandoSalud(true);
     api
       .get(`/personal/${empleado.id}/salud`)
-      .then(({ data }) => setForm((f) => ({ ...f, salud: { ...saludVacia, ...data.salud } })))
-      .catch(() => {})
+      .then(({ data }) => ({ ...saludVacia, ...data.salud }))
+      .catch(() => saludVacia)
+      .then((salud) => {
+        if (pedido !== pedidoRef.current) return; // ya se cerró o se abrió otro registro
+        const completo = { ...datos, salud };
+        setForm((f) => ({ ...f, salud }));
+        inicialRef.current = instantanea(completo, ""); // lo cargado no cuenta como "cambio"
+        // Muestra desde el inicio lo que falta (ej. registros viejos sin fecha de nacimiento)
+        const errs = validar(completo);
+        setErrores(errs);
+        setFaltanDatos(Object.keys(errs).length > 0);
+      })
       .finally(() => setCargandoSalud(false));
+  }
+
+  // X, Esc, clic afuera o Cancelar
+  function intentarCerrar() {
+    if (instantanea(form, fotoNueva) === inicialRef.current) cerrarModal();
+    else setConfirmandoSalir(true);
   }
 
   async function elegirFoto(e) {
@@ -210,29 +259,24 @@ export default function Personal() {
   }
 
   function cerrarModal() {
+    pedidoRef.current++;
+    setCargandoSalud(false);
     setModalAbierto(false);
     setEditandoId(null);
     setForm(vacio);
     setErrores({});
+    setFaltanDatos(false);
     setConfirmandoGuardar(false);
+    setConfirmandoSalir(false);
   }
 
   // Paso 1: Validar formulario y abrir modal de confirmación
   function validarYPedirConfirmacion(e) {
     e.preventDefault();
 
-    const esInstructor = form.rol === "instructor";
-    const errs = {
-      nombre: vNombre(form.nombre, tr.personal.nombre),
-      telefono: vTelefono(form.telefono),
-      correo: vCorreo(form.correo),
-      costoServicio: esInstructor ? vMonto(form.costoServicio, tr.personal.costoServicio) : "",
-      capacidadMaxima: esInstructor ? vEntero(form.capacidadMaxima, tr.personal.capacidadMaxima) : "",
-      // En la app la fecha de nacimiento del personal siempre es obligatoria
-      salud_fechaNacimiento: fechaNacimientoValida(form.salud.fechaNacimiento) ? "" : tr.salud.valFecha,
-    };
+    const errs = validar(form);
     setErrores(errs);
-    if (Object.values(errs).some(Boolean)) return;
+    if (Object.keys(errs).length) return;
 
     setConfirmandoGuardar(true);
   }
@@ -382,9 +426,16 @@ export default function Personal() {
       <Modal
         abierto={modalAbierto}
         titulo={editandoId ? tr.personal.modalEditar : tr.personal.modalNuevo}
-        onClose={cerrarModal}
+        onClose={intentarCerrar}
+        cerrarAlClicFuera
       >
         <form onSubmit={validarYPedirConfirmacion} noValidate>
+          {faltanDatos && Object.values(errores).some(Boolean) && (
+            <p className="mb-4 rounded-lg border border-[var(--c-ambar)] bg-[var(--c-acento-15)] px-4 py-2.5 text-sm text-[var(--c-ambar-texto)]">
+              {tr.personal.faltanDatos}
+            </p>
+          )}
+
           <Input label={tr.personal.nombre} value={form.nombre} onChange={cambiar("nombre", limpiarLetras)} />
           <Err msg={errores.nombre} />
 
@@ -474,10 +525,32 @@ export default function Personal() {
 
           <Err msg={errores.general} />
 
-          <Boton type="submit" className="w-full mt-2">
-            {editandoId ? tr.guardarCambios : tr.personal.guardarNuevo}
-          </Boton>
+          <div className="flex gap-3 mt-2">
+            <Boton type="button" variante="outline" className="flex-1" onClick={intentarCerrar}>
+              {tr.cancelar}
+            </Boton>
+            <Boton type="submit" className="flex-1">
+              {editandoId ? tr.guardarCambios : tr.personal.guardarNuevo}
+            </Boton>
+          </div>
         </form>
+      </Modal>
+
+      {/* Salir con cambios sin guardar */}
+      <Modal
+        abierto={confirmandoSalir}
+        titulo={tr.personal.salirSinGuardarTitulo}
+        onClose={() => setConfirmandoSalir(false)}
+      >
+        <p className="text-sm text-center text-[var(--c-texto-sec)] mb-6">{tr.personal.salirSinGuardarMsg}</p>
+        <div className="flex items-center justify-center gap-3">
+          <Boton variante="outline" className="flex-1" onClick={() => setConfirmandoSalir(false)}>
+            {tr.personal.seguirEditando}
+          </Boton>
+          <Boton variante="peligro" className="flex-1" onClick={cerrarModal}>
+            {tr.personal.salirSinGuardarBtn}
+          </Boton>
+        </div>
       </Modal>
 
       {/* Modal de confirmación antes de guardar personal */}

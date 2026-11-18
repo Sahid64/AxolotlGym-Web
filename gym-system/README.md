@@ -53,7 +53,7 @@ La web usa la misma base de Supabase que la app Android: se entra con las cuenta
 - `/recepcion/clientes` — tabla con buscador, filtro por estado, boton renovar, formulario para nuevo cliente y botón **Registrar rostro**.
 
 ### Cómo funciona el reconocimiento facial
-- Usa **el mismo modelo que la app Android** (`frontend/public/models/mobilefacenet.tflite`) y las mismas funciones de Supabase (`sql/reconocimiento_facial.sql` de la app): un rostro registrado en la app sirve en la web y al revés.
+- Usa **el mismo modelo que la app Android** (`frontend/public/models/mobilefacenet.tflite`) y las mismas funciones de Supabase: un rostro registrado en la app sirve en la web y al revés.
 - El navegador detecta la cara (MediaPipe) y la convierte en 192 números (`src/biometria/reconocedor.js`). Solo ese vector viaja al backend; para identificar no se mandan fotos.
 - Las librerías se cargan desde CDN (jsdelivr / Google) al encender la cámara: se necesita internet y permiso de cámara (Vercel ya da HTTPS).
 - Si confunde personas o no reconoce, se ajusta el umbral en Supabase: `_umbral_rostro()` (0.70 por defecto).

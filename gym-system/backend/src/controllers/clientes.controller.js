@@ -204,7 +204,7 @@ export const leerIds = (v) =>
 
 // GET /api/clientes/fotos?ids=1,2,3 -> { fotos: { id: dataUrl } }
 // Una sola petición para todas las fotos de la tabla (antes: una petición por cliente).
-// Usa fotos_clientes (sql/optimizacion_rendimiento.sql); si aún no existe, cae a foto_cliente_por_id.
+// Usa la funcion fotos_clientes de Supabase; si aún no existe, cae a foto_cliente_por_id.
 export const obtenerFotosClientes = manejar(async (req, res) => {
   const ids = leerIds(req.query.ids);
   if (!ids.length) return res.json({ ok: true, fotos: {} });

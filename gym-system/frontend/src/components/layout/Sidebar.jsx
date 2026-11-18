@@ -40,6 +40,7 @@ export default function Sidebar() {
       { to: "/encargado/visitas", label: tr.menuExtra.visitas },
       { to: "/encargado/reportes", label: tr.menu.reportes },
       { to: "/encargado/avisos", label: tr.menuExtra.avisos },
+      { to: "/encargado/movimientos", label: tr.menuExtra.movimientos },
       { to: "/encargado/perfil", label: tr.menuExtra.perfil },
     ],
     dueno: [
@@ -52,6 +53,7 @@ export default function Sidebar() {
       { to: "/encargado/visitas", label: tr.menuExtra.visitas },
       { to: "/encargado/reportes", label: tr.menu.reportes },
       { to: "/encargado/avisos", label: tr.menuExtra.avisos },
+      { to: "/encargado/movimientos", label: tr.menuExtra.movimientos },
       { to: "/encargado/perfil", label: tr.menuExtra.perfil },
     ],
   };

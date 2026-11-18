@@ -53,9 +53,7 @@ AxolotlGym-Web/
     │       ├── context/       # Auth, tema, idioma
     │       ├── pages/         # compartidas, encargado, recepcion
     │       └── routes/        # Rutas de la app
-    └── sql/
-        └── optimizacion_rendimiento.sql
-```
+    └── 
 ## Privacidad y datos biométricos
 
 El sistema procesa datos personales y biométricos (rostro) de los clientes. Se debe contar con su consentimiento y cumplir con la normativa aplicable de protección de datos. Consulta las páginas de Términos y Privacidad incluidas en la aplicación.

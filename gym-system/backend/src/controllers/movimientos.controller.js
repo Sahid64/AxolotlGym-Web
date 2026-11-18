@@ -22,6 +22,7 @@ export const listarMovimientos = manejar(async (req, res) => {
     hayMas: (filas || []).length === limite,
     movimientos: (filas || []).map((f) => ({
       id: f.id,
+      usuarioId: f.usuario_id,
       rol: f.rol,
       usuario: f.usuario,
       gmail: f.gmail,

@@ -26,6 +26,7 @@ const estiloAccion = {
   CAMBIO_PERMISO: "text-[var(--c-ambar-texto)]",
   DELETE: "text-[var(--c-rojo)]",
   CANCELACION: "text-[var(--c-rojo)]",
+  LOGIN: "text-[var(--c-texto)]",
 };
 
 const tieneValores = (v) => v != null && !(typeof v === "object" && Object.keys(v).length === 0);
@@ -120,7 +121,7 @@ export default function Movimientos() {
   const BotonDetalle = ({ m }) =>
     conCambios(m) ? (
       <Boton tamano="sm" variante="outline" onClick={() => setDetalle(m)}>
-        {t.verCambios}
+        {t.verDetalle}
       </Boton>
     ) : (
       <span className="text-[var(--c-texto-tenue)]">—</span>
@@ -284,8 +285,7 @@ export default function Movimientos() {
             </div>
             <p className="text-sm font-medium text-[var(--c-texto)]">{detalle.usuario || t.sistema}</p>
             {detalle.descripcion && <p className="text-sm text-[var(--c-texto-sec)] mt-1 mb-4">{detalle.descripcion}</p>}
-            <Valores titulo={t.anteriores} valor={detalle.valoresAnteriores} vacio={t.sinValores} />
-            <Valores titulo={t.nuevos} valor={detalle.valoresNuevos} vacio={t.sinValores} />
+            <Comparacion antes={detalle.valoresAnteriores} despues={detalle.valoresNuevos} t={t} />
           </div>
         )}
       </Modal>
@@ -293,31 +293,73 @@ export default function Movimientos() {
   );
 }
 
-// Lista clave → valor de un objeto JSON (o el JSON tal cual si no es objeto)
-function Valores({ titulo, valor, vacio }) {
-  const esObjeto = valor && typeof valor === "object" && !Array.isArray(valor);
-  const entradas = esObjeto ? Object.entries(valor) : [];
-  const texto = (v) => (v === null || v === undefined || v === "" ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v));
+// Antes / después lado a lado. Une las claves de ambos JSON y resalta las que cambiaron.
+const esObjeto = (v) => v && typeof v === "object" && !Array.isArray(v);
+const textoValor = (v) =>
+  v === null || v === undefined || v === "" ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v);
+
+function Comparacion({ antes, despues, t }) {
+  // Si alguno no es un objeto (arreglo, texto…), se muestran los dos JSON completos
+  if ((tieneValores(antes) && !esObjeto(antes)) || (tieneValores(despues) && !esObjeto(despues))) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {[
+          [t.anteriores, antes],
+          [t.nuevos, despues],
+        ].map(([titulo, v]) => (
+          <div key={titulo}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--c-acento)] mb-1.5">{titulo}</p>
+            <pre className="text-xs rounded-md border border-[var(--c-borde)] bg-[var(--c-campo)] text-[var(--c-texto)] p-3 overflow-x-auto whitespace-pre-wrap break-all">
+              {tieneValores(v) ? JSON.stringify(v, null, 2) : t.sinValores}
+            </pre>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const a = antes || {};
+  const d = despues || {};
+  const claves = [...new Set([...Object.keys(a), ...Object.keys(d)])];
+  const hayAntes = tieneValores(antes);
+  const hayDespues = tieneValores(despues);
 
   return (
-    <div className="mb-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--c-acento)] mb-1.5">{titulo}</p>
-      {!tieneValores(valor) ? (
-        <p className="text-sm text-[var(--c-texto-tenue)]">{vacio}</p>
-      ) : esObjeto ? (
-        <dl className="rounded-md border border-[var(--c-borde)] bg-[var(--c-campo)] divide-y divide-[var(--c-borde-30)]">
-          {entradas.map(([k, v]) => (
-            <div key={k} className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3 px-3 py-1.5 text-xs">
-              <dt className="text-[var(--c-texto-sec)] break-words">{k}</dt>
-              <dd className="text-[var(--c-texto)] break-all">{texto(v)}</dd>
+    <div className="rounded-md border border-[var(--c-borde)] bg-[var(--c-campo)] overflow-hidden">
+      {/* Encabezado (en móvil cada campo se apila) */}
+      <div className="hidden sm:grid grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_minmax(0,2fr)] gap-3 px-3 py-2 border-b border-[var(--c-borde-suave)] text-xs font-semibold uppercase tracking-wide text-[var(--c-acento)]">
+        <span>{t.campo}</span>
+        <span>{t.anteriores}</span>
+        <span>{t.nuevos}</span>
+      </div>
+      <div className="divide-y divide-[var(--c-borde-30)]">
+        {claves.map((k) => {
+          const va = textoValor(a[k]);
+          const vd = textoValor(d[k]);
+          const cambio = hayAntes && hayDespues && va !== vd;
+          return (
+            <div
+              key={k}
+              className={`grid grid-cols-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_minmax(0,2fr)] gap-1 sm:gap-3 px-3 py-2 text-xs ${
+                cambio ? "bg-[var(--c-acento-10)]" : ""
+              }`}
+            >
+              <span className="font-medium text-[var(--c-texto-sec)] break-words">
+                {k}
+                {cambio && <span className="ml-1.5 text-[10px] font-bold text-[var(--c-acento-texto)]">· {t.cambio}</span>}
+              </span>
+              <span className={`break-all ${cambio ? "text-[var(--c-rojo-texto)] line-through decoration-1" : "text-[var(--c-texto)]"}`}>
+                <span className="sm:hidden text-[var(--c-texto-tenue)] no-underline">{t.anteriores}: </span>
+                {hayAntes ? va : "—"}
+              </span>
+              <span className={`break-all ${cambio ? "text-[var(--c-verde-texto)] font-medium" : "text-[var(--c-texto)]"}`}>
+                <span className="sm:hidden text-[var(--c-texto-tenue)] font-normal">{t.nuevos}: </span>
+                {hayDespues ? vd : "—"}
+              </span>
             </div>
-          ))}
-        </dl>
-      ) : (
-        <pre className="text-xs rounded-md border border-[var(--c-borde)] bg-[var(--c-campo)] text-[var(--c-texto)] p-3 overflow-x-auto whitespace-pre-wrap break-all">
-          {JSON.stringify(valor, null, 2)}
-        </pre>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

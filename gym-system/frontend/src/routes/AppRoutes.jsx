@@ -1,15 +1,14 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
-// La página de inicio va en el bundle principal (es la de entrada).
-// Las demás se cargan por ruta: cada sección baja su propio JS solo cuando se visita
-// (Recharts, por ejemplo, solo se descarga al abrir el Dashboard).
+// La página de inicio va en el bundle principal (es la de entrada); las demás se cargan
+// por ruta: cada sección baja su propio JS solo cuando se visita.
 import Inicio from "../pages/Inicio.jsx";
-import RutaProtegida from "../components/layout/RutaProtegida.jsx";
-
 const Login = lazy(() => import("../pages/Login.jsx"));
 const Terminos = lazy(() => import("../pages/Terminos.jsx"));
 const Privacidad = lazy(() => import("../pages/Privacidad.jsx"));
+
+import RutaProtegida from "../components/layout/RutaProtegida.jsx";
 
 // Recepcion
 const AccesoFacial = lazy(() => import("../pages/recepcion/AccesoFacial.jsx")); // toma de lista con reconocimiento facial

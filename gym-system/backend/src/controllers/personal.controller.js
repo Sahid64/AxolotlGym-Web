@@ -8,26 +8,48 @@ import {
 
 const TEMPORAL = "Axolotl2026"; // contraseña inicial que asigna la base a personal nuevo
 
-// Fila de la vista personal_lista -> empleado como lo usa el frontend
-async function aEmpleado(p) {
-  const [d] = (await rpc("detalle_personal", { p_id: p.id })) || [];
+// La vista personal_lista_detalle (sql/optimizacion_rendimiento.sql) ya trae teléfono, costo y cupo:
+// antes se llamaba detalle_personal una vez por cada persona (N+1).
+// Si la vista aún no existe en Supabase, se usa personal_lista + detalle_personal como antes.
+let vistaDetalle = true;
+const vistaNoExiste = (e) => ["42P01", "PGRST205"].includes(e?.code);
+
+async function leerPersonal(filtrar) {
+  if (vistaDetalle) {
+    const { data, error } = await filtrar(supabase.from("personal_lista_detalle").select("*"));
+    if (!error) return data || [];
+    if (!vistaNoExiste(error)) throw errorHttp(500, error.message);
+    vistaDetalle = false;
+    console.warn("personal_lista_detalle no disponible; se usa detalle_personal por fila:", error.message);
+  }
+  const filas = await consulta(filtrar(supabase.from("personal_lista").select("*")));
+  return Promise.all(
+    filas.map(async (p) => {
+      const [d] = (await rpc("detalle_personal", { p_id: p.id })) || [];
+      return { ...p, telefono: d?.r_telefono, costo: d?.r_costo, max_clientes: d?.r_max_clientes };
+    })
+  );
+}
+
+// Fila de personal_lista_detalle -> empleado como lo usa el frontend
+function aEmpleado(p) {
   const empleado = {
     id: p.id,
     nombre: p.nombre,
     correo: p.gmail,
-    telefono: d?.r_telefono || "",
+    telefono: p.telefono || "",
     rol: aMinusculas(p.rol),
     estado: aMinusculas(p.estado),
   };
   if (empleado.rol === "instructor") {
-    empleado.costoServicio = numero(d?.r_costo);
-    empleado.capacidadMaxima = numero(d?.r_max_clientes);
+    empleado.costoServicio = numero(p.costo);
+    empleado.capacidadMaxima = numero(p.max_clientes);
   }
   return empleado;
 }
 
 async function buscarEmpleado(id) {
-  const [fila] = await consulta(supabase.from("personal_lista").select("*").eq("id", id).limit(1));
+  const [fila] = await leerPersonal((q) => q.eq("id", id).limit(1));
   return fila || null;
 }
 
@@ -75,8 +97,28 @@ export const guardarFotoPersonal = manejar(async (req, res) => {
 
 // GET /api/personal
 export const listarPersonal = manejar(async (req, res) => {
-  const filas = await consulta(supabase.from("personal_lista").select("*").order("nombre"));
-  res.json({ ok: true, personal: await Promise.all(filas.map(aEmpleado)) });
+  const filas = await leerPersonal((q) => q.order("nombre"));
+  res.json({ ok: true, personal: filas.map(aEmpleado) });
+});
+
+// GET /api/personal/fotos?ids=1,2,3 -> { fotos: { id: dataUrl } }  (una petición para toda la tabla)
+// Usa fotos_personal (sql/optimizacion_rendimiento.sql); si aún no existe, cae a foto_personal por correo.
+export const obtenerFotosPersonal = manejar(async (req, res) => {
+  const ids = [...new Set(String(req.query.ids || "").split(",").map(Number))]
+    .filter((n) => Number.isInteger(n) && n > 0)
+    .slice(0, 100);
+  if (!ids.length) return res.json({ ok: true, fotos: {} });
+  let pares;
+  try {
+    const filas = (await rpc("fotos_personal", { p_ids: ids })) || [];
+    pares = filas.map((f) => [f.r_id, f.r_foto]);
+  } catch {
+    const emps = await consulta(supabase.from("personal_lista").select("id, gmail").in("id", ids));
+    const unicos = [...new Map(emps.map((e) => [e.id, e])).values()];
+    pares = await Promise.all(unicos.map(async (e) => [e.id, await rpc("foto_personal", { p_gmail: e.gmail })]));
+  }
+  const aUrl = (b64) => (String(b64).startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`);
+  res.json({ ok: true, fotos: Object.fromEntries(pares.filter(([, b]) => b).map(([id, b]) => [id, aUrl(b)])) });
 });
 
 // GET /api/personal/:id/foto -> Foto de perfil del personal (JPEG en base64 desde foto_personal) o null
@@ -131,7 +173,7 @@ export const crearPersonal = manejar(async (req, res) => {
   res.status(201).json({
     ok: true,
     id,
-    empleado: fila ? await aEmpleado(fila) : { id },
+    empleado: fila ? aEmpleado(fila) : { id },
     correoEnviado,
     motivoCorreo: motivoCorreo || null,
     mensaje,
@@ -159,7 +201,7 @@ export const actualizarPersonal = manejar(async (req, res) => {
   });
   if (req.body.salud) await guardarSalud(req.usuario.correo, id, req.body.salud);
 
-  res.json({ ok: true, empleado: await aEmpleado(await buscarEmpleado(id)) });
+  res.json({ ok: true, empleado: aEmpleado(await buscarEmpleado(id)) });
 });
 
 // DELETE /api/personal/:id

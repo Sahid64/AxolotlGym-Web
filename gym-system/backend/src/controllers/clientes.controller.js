@@ -1,4 +1,5 @@
 import { supabase, rpc, consulta, manejar, errorHttp, aMinusculas, funcionEdge } from "../data/supabase.js";
+import { enCache } from "../data/cache.js";
 
 // Convierte una fila de la vista clientes_lista a la forma que usa el frontend.
 // El nombre completo se separa en nombre (primera palabra) y apellido (resto)
@@ -39,18 +40,23 @@ async function buscarPorId(id) {
 const esEncargado = (req) => ["encargado", "dueno"].includes(req.usuario?.rol);
 const vistaPlanes = (req) => (esEncargado(req) ? "planes_encargado" : "planes_recepcion");
 
+// Los planes cambian poco: se guardan 60 s en memoria (se invalidan al editar Servicios).
+// Antes se consultaban en cada alta y en cada renovación.
+const planesDe = (req) =>
+  enCache(vistaPlanes(req), 60_000, () =>
+    consulta(supabase.from(vistaPlanes(req)).select("id, nombre, precio, duracion_dias, servicio_id").order("precio"))
+  );
+
 async function nombrePlan(req, plan) {
   if (!plan) return null;
-  const tipos = await consulta(supabase.from(vistaPlanes(req)).select("nombre"));
+  const tipos = await planesDe(req);
   const tipo = tipos.find((t) => t.nombre.toLowerCase() === String(plan).toLowerCase());
   if (!tipo) throw errorHttp(400, `Plan no valido: ${plan}`);
   return tipo.nombre;
 }
 
 export const listarPlanes = manejar(async (req, res) => {
-  const planes = await consulta(
-    supabase.from(vistaPlanes(req)).select("id, nombre, precio, duracion_dias, servicio_id").order("precio")
-  );
+  const planes = await planesDe(req);
   res.json({ ok: true, planes: planes.map((p) => ({ ...p, precio: Number(p.precio) })) });
 });
 
@@ -168,21 +174,50 @@ const limpiarBase64 = (b64) =>
     .trim()
     .replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
 
+// Los filtros (búsqueda, estado y perfiles eliminados por ARCO) se aplican en la base,
+// no en Node: antes se descargaban todos los clientes en cada búsqueda.
 export const listarClientes = manejar(async (req, res) => {
   const { buscar, estado } = req.query;
-  const filas = await consulta(supabase.from("clientes_lista").select("*").order("nombre"));
-  let resultado = filas.filter((f) => !esEliminadoArco(f)).map(aCliente);
-  if (buscar) {
-    const q = String(buscar).toLowerCase();
-    resultado = resultado.filter(
-      (c) =>
-        c.nombreCompleto.toLowerCase().includes(q) ||
-        String(c.numMembresia).toLowerCase().includes(q) ||
-        String(c.codigoQr || "").toLowerCase() === q
-    );
+  let q = supabase
+    .from("clientes_lista")
+    .select("id, nombre, gmail, telefono, numero_membresia, codigo_qr, plan, fecha_fin, fecha_registro, estado, activa")
+    .not("gmail", "like", "%@anonimo.axolotl")
+    .neq("nombre", "Cliente Eliminado")
+    .order("nombre");
+
+  const filtros = [];
+  // Quita caracteres que romperían la sintaxis de los filtros de PostgREST
+  const texto = String(buscar || "").replace(/[,()*%\\:"]/g, " ").trim();
+  if (texto) filtros.push(`nombre.ilike."*${texto}*",numero_membresia.ilike."*${texto}*",codigo_qr.ilike."${texto}"`);
+  if (estado === "inactivo") filtros.push("activa.eq.false,estado.neq.ACTIVO");
+  if (estado === "activo") q = q.eq("activa", true).eq("estado", "ACTIVO");
+  if (filtros.length === 1) q = q.or(filtros[0]);
+  if (filtros.length === 2) q = q.or(`and(or(${filtros[0]}),or(${filtros[1]}))`);
+
+  const filas = await consulta(q);
+  res.json({ ok: true, clientes: filas.filter((f) => !esEliminadoArco(f)).map(aCliente) });
+});
+
+const aDataUrl = (b64) => (b64 ? (String(b64).startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`) : null);
+export const leerIds = (v) =>
+  [...new Set(String(v || "").split(",").map(Number))].filter((n) => Number.isInteger(n) && n > 0).slice(0, 100);
+
+// GET /api/clientes/fotos?ids=1,2,3 -> { fotos: { id: dataUrl } }
+// Una sola petición para todas las fotos de la tabla (antes: una petición por cliente).
+// Usa fotos_clientes (sql/optimizacion_rendimiento.sql); si aún no existe, cae a foto_cliente_por_id.
+export const obtenerFotosClientes = manejar(async (req, res) => {
+  const ids = leerIds(req.query.ids);
+  if (!ids.length) return res.json({ ok: true, fotos: {} });
+  let pares;
+  try {
+    const filas = (await rpc("fotos_clientes", { p_ids: ids })) || [];
+    pares = filas.map((f) => [f.r_id, f.r_foto]);
+  } catch {
+    pares = await Promise.all(ids.map(async (id) => [id, await rpc("foto_cliente_por_id", { p_cliente_id: id })]));
   }
-  if (estado) resultado = resultado.filter((c) => c.estado === estado);
-  res.json({ ok: true, clientes: resultado });
+  const fotos = Object.fromEntries(pares.filter(([, b64]) => b64).map(([id, b64]) => [id, aDataUrl(b64)]));
+  res.set("Cache-Control", "private, max-age=600"); // la foto del cliente no cambia (trigger bloquear_cambio_foto)
+  res.json({ ok: true, fotos });
 });
 
 export const obtenerCliente = manejar(async (req, res) => {
@@ -216,17 +251,18 @@ export const crearCliente = manejar(async (req, res) => {
   });
   const nuevoId = filas[0].r_id;
 
-  // El cliente ya quedó creado: si los datos de salud o el correo fallan solo se avisa (igual que la app)
+  // El cliente ya quedó creado: si los datos de salud o el correo fallan solo se avisa (igual que la app).
+  // Salud, correo y la lectura del cliente son independientes: van en paralelo (antes en serie).
+  const [saludOk, fallaCorreo, fila] = await Promise.all([
+    guardarSalud(req.usuario.correo, nuevoId, leerSalud(req.body)).then(() => true, () => false),
+    funcionEdge("enviar-bienvenida", { gmail: correo }),
+    buscarPorId(nuevoId),
+  ]);
   const avisos = [];
-  try {
-    await guardarSalud(req.usuario.correo, nuevoId, leerSalud(req.body));
-  } catch {
-    avisos.push("No se pudieron guardar los datos de salud. Edita al cliente para intentarlo de nuevo.");
-  }
-  const fallaCorreo = await funcionEdge("enviar-bienvenida", { gmail: correo });
+  if (!saludOk) avisos.push("No se pudieron guardar los datos de salud. Edita al cliente para intentarlo de nuevo.");
   if (fallaCorreo) avisos.push("No se pudo enviar el correo de bienvenida.");
 
-  const cliente = aCliente(await buscarPorId(nuevoId));
+  const cliente = aCliente(fila);
   res.status(201).json({
     ok: true,
     cliente,
@@ -290,12 +326,15 @@ export const renovarCliente = manejar(async (req, res) => {
     p_metodo: metodo,
   });
   // Pago en efectivo/tarjeta ya aceptado: el comprobante va al correo registrado del cliente (igual que la app)
-  const avisos = [];
-  if (vence) {
-    const falla = await funcionEdge("enviar-recibo", { cliente_id: actual.id });
-    avisos.push(falla ? `No se pudo enviar el comprobante por correo (${falla}).` : `Comprobante enviado a ${actual.gmail}.`);
-  }
-  res.json({ ok: true, cliente: aCliente(await buscarPorId(actual.id)), mensaje: "Membresia renovada", vence, avisos });
+  // El recibo y la lectura del cliente actualizado van en paralelo
+  const [falla, fila] = await Promise.all([
+    vence ? funcionEdge("enviar-recibo", { cliente_id: actual.id }) : null,
+    buscarPorId(actual.id),
+  ]);
+  const avisos = vence
+    ? [falla ? `No se pudo enviar el comprobante por correo (${falla}).` : `Comprobante enviado a ${actual.gmail}.`]
+    : [];
+  res.json({ ok: true, cliente: aCliente(fila), mensaje: "Membresia renovada", vence, avisos });
 });
 
 // Solo Encargado (igual que la app): activa la cuenta o la da de baja.

@@ -1,4 +1,5 @@
 import { supabase, rpc, consulta, manejar, errorHttp, numero } from "../data/supabase.js";
+import { invalidar } from "../data/cache.js";
 
 const tabla = () => supabase.from("servicios");
 const aServicio = (s) => ({
@@ -57,6 +58,7 @@ export const crearServicio = manejar(async (req, res) => {
     }
     if (nuevoId) await configurar(req.usuario.correo, nuevoId, c);
   }
+  invalidar("planes_"); // los planes de Clientes salen de los servicios
   res.status(201).json({ ok: true, servicio: aServicio({ id: nuevoId, ...d, ...c }) });
 });
 
@@ -72,6 +74,7 @@ export const actualizarServicio = manejar(async (req, res) => {
   });
   const c = leerConfig(req.body);
   await configurar(req.usuario.correo, id, c);
+  invalidar("planes_");
   res.json({ ok: true, servicio: aServicio({ id, ...d, ...c }) });
 });
 
@@ -80,5 +83,6 @@ export const eliminarServicio = manejar(async (req, res) => {
     p_actor_gmail: req.usuario.correo,
     p_id: Number(req.params.id),
   });
+  invalidar("planes_");
   res.json({ ok: true, mensaje: "Servicio eliminado" });
 });

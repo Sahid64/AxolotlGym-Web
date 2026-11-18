@@ -3,27 +3,27 @@ import { useEffect, useState } from "react";
 
 const slides = [
   {
-    image: "/images/img1.png",
+    image: "/images/img1.webp",
     title: "Tu mejor versión empieza aquí",
   },
   {
-    image: "/images/img2.png",
+    image: "/images/img2.webp",
     title: "Disciplina que transforma",
   },
   {
-    image: "/images/img3.png",
+    image: "/images/img3.webp",
     title: "Disciplina, constancia y resultados",
   },
   {
-    image: "/images/img4.png",
+    image: "/images/img4.webp",
     title: "Un espacio para tus objetivos",
   },
   {
-    image: "/images/img5.png",
+    image: "/images/img5.webp",
     title: "Somos una comunidad",
   },
   {
-    image: "/images/img6.png",
+    image: "/images/img6.webp",
     title: "Entrena hoy por el mañana que quieres",
   },
 ];

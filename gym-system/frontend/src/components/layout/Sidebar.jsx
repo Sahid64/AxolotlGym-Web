@@ -67,7 +67,7 @@ export default function Sidebar() {
         <aside className="w-56 h-full bg-[var(--c-barra)] flex flex-col justify-between overflow-hidden">
           {/* Encabezado compacto: logo, nombre y rol */}
           <div className="shrink-0 px-4 pt-4 pb-3 flex flex-col items-center text-center">
-            <img src="/logo_final.png" alt="Axolotl" className="w-20 h-20 object-contain" />
+            <img src="/logo_final.webp" alt="Axolotl" className="w-20 h-20 object-contain" />
             <p className="mt-2 text-base font-bold tracking-[0.3em] text-[var(--c-texto)]">AXOLOTL</p>
             <span className="mt-1.5 px-3.5 py-0.5 rounded-full border border-[var(--c-acento)] bg-[var(--c-acento-15)] text-xs font-bold text-[var(--c-acento)]">
               {tr.roles[usuario?.rol] || usuario?.rol}

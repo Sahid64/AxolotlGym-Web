@@ -7,11 +7,10 @@ import FondoGym from "../components/ui/FondoGym.jsx";
 
 const APK_URL = "https://github.com/itsbuglover/AxolotlGym-Web/releases/latest/download/AxolotlGym.apk";
 
-// Las imágenes traen texto dentro. Versión en inglés: /images/img11.png, img22.png ... img66.png
-// (si no existe el .png se prueba .jpg, y si tampoco, se usa la versión en español)
-const EXT_INGLES = ["png", "jpg", "jpeg", "webp"];
-const NUM_IMAGENES = 6;
-const IMAGENES = Array.from({ length: NUM_IMAGENES }, (_, i) => i + 1);
+// Las imágenes traen texto dentro. Español: /images/imgN.webp · Inglés: /images/imgNN.webp
+// (si falta la de inglés se usa la de español). Se generan con scripts/optimizar-imagenes.mjs
+const IMAGENES = [1, 2, 3, 4, 5, 6];
+const rutaImagen = (n, ingles) => (ingles ? `/images/img${n}${n}.webp` : `/images/img${n}.webp`);
 
 const ICONOS_CARACT = [
   // Rostro / escaneo
@@ -58,9 +57,15 @@ export default function Inicio() {
   const { tr, idioma } = useIdioma();
   const t = tr.inicio;
   const [activa, setActiva] = useState(0);
-  // Intento de extensión por imagen en inglés; si se agotan, se usa la versión en español
-  const [intento, setIntento] = useState({});
-  const sinIngles = (n) => (intento[n] || 0) >= EXT_INGLES.length;
+  // Imágenes en inglés que no existen: se muestra la de español con pie traducido
+  const [fallaIngles, setFallaIngles] = useState({});
+  const sinIngles = (n) => !!fallaIngles[n];
+  // Solo se descargan la imagen activa y la siguiente (antes se bajaban las 6 al entrar)
+  const [vistas, setVistas] = useState(() => new Set([0]));
+  useEffect(() => {
+    const sig = (activa + 1) % IMAGENES.length;
+    setVistas((p) => (p.has(activa) && p.has(sig) ? p : new Set([...p, activa, sig])));
+  }, [activa]);
 
   useEffect(() => {
     const id = window.setInterval(() => setActiva((a) => (a + 1) % IMAGENES.length), 6000);
@@ -74,7 +79,7 @@ export default function Inicio() {
       {/* Barra superior: idioma, tema e inicio de sesión (esquina superior derecha) */}
       <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-2 px-4 py-4 sm:px-8">
         <div className="flex items-center gap-2">
-          <img src="/logo_final.png" alt="Axolotl" className="h-9 w-9 object-contain" />
+          <img src="/logo_final.webp" alt="Axolotl" width={36} height={36} className="h-9 w-9 object-contain" />
           <span className="hidden text-sm font-bold tracking-[0.3em] sm:block">AXOLOTL</span>
         </div>
 
@@ -96,8 +101,10 @@ export default function Inicio() {
       {/* Hero */}
       <main className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col items-center px-5 pb-16 pt-28 text-center">
         <img
-          src="/logo_final.png"
+          src="/logo_final.webp"
           alt="Axolotl"
+          width={144}
+          height={144}
           className="h-28 w-28 object-contain sm:h-36 sm:w-36"
           style={{ filter: "drop-shadow(0 0 24px var(--c-acento-60))" }}
         />
@@ -114,13 +121,18 @@ export default function Inicio() {
           <div className="fx-borde relative mx-auto w-full max-w-3xl">
             <div className="relative aspect-video overflow-hidden rounded-[calc(1rem-1.5px)] bg-black">
               {IMAGENES.map((n, i) => {
+                if (!vistas.has(i)) return null;
                 const usaIngles = idioma === "en" && !sinIngles(n);
                 return (
                   <img
-                    key={`${idioma}-${n}-${usaIngles ? intento[n] || 0 : "es"}`}
-                    src={usaIngles ? `/images/img${n}${n}.${EXT_INGLES[intento[n] || 0]}` : `/images/img${n}.png`}
+                    key={`${n}-${usaIngles ? "en" : "es"}`}
+                    src={rutaImagen(n, usaIngles)}
                     alt={t.carrusel[i]}
-                    onError={() => usaIngles && setIntento((p) => ({ ...p, [n]: (p[n] || 0) + 1 }))}
+                    width={1280}
+                    height={853}
+                    decoding="async"
+                    fetchpriority={i === 0 ? "high" : "low"}
+                    onError={() => usaIngles && setFallaIngles((p) => ({ ...p, [n]: true }))}
                     className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-1000 ${
                       i === activa ? "opacity-100" : "pointer-events-none opacity-0"
                     }`}

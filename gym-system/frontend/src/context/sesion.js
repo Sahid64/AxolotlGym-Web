@@ -8,6 +8,16 @@ export const CLAVE_USUARIO = "gym_usuario";
 // Secciones privadas (todo lo que pasa por RutaProtegida)
 export const esRutaProtegida = (ruta = window.location.pathname) => /^\/(recepcion|encargado)(\/|$)/.test(ruta);
 
+// Panel que le corresponde a cada rol. Solo dentro de su panel la sesión sigue viva;
+// si un usuario con sesión aterriza fuera (Atrás hacia /login o /, URL escrita a mano,
+// sección de otro rol), la sesión se destruye.
+const PANEL_POR_ROL = {
+  recepcion: /^\/recepcion(\/|$)/,
+  encargado: /^\/encargado(\/|$)/,
+  dueno: /^\/encargado(\/|$)/,
+};
+export const esRutaDeSuRol = (ruta, rol) => Boolean(PANEL_POR_ROL[rol]?.test(ruta));
+
 // Lee el "exp" del JWT sin verificar la firma (eso lo hace el backend en cada petición).
 // Sirve para no mostrar una pantalla privada con un token ya vencido.
 function tokenVigente(token) {

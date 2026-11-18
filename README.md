@@ -1,29 +1,13 @@
 # Axolotl Gym — Sistema de Gestión
 
-Aplicación web para administrar un gimnasio: clientes y membresías, pagos, control de acceso con **reconocimiento facial** y **códigos QR**, personal, servicios, asesorías, gastos y reportes, con paneles separados por rol.
+Aplicación web para administrar un gimnasio: clientes y membresías, pagos, control de acceso con **reconocimiento facial**, personal, servicios, asesorías, gastos y reportes, con paneles separados por rol.
 
 > Frontend desplegable en Vercel · Backend en Node.js/Express · Base de datos en Supabase
 
----
-
-## Tabla de contenidos
-
-- [Características](#-características)
-- [Tecnologías](#-tecnologías)
-- [Estructura del proyecto](#-estructura-del-proyecto)
-- [Requisitos previos](#-requisitos-previos)
-- [Instalación](#-instalación)
-- [Variables de entorno](#-variables-de-entorno)
-- [Despliegue](#-despliegue)
-- [Capturas de pantalla](#-capturas-de-pantalla)
-- [Privacidad y datos biométricos](#-privacidad-y-datos-biométricos)
-- [Autores](#-autores)
-- [Licencia](#-licencia)
-
----
 
 ## Características
 
+- **Página principal pública**: promoción del gimnasio y descarga de la **aplicación móvil**.
 - **Autenticación y roles** (encargado / recepción) con rutas protegidas y recuperación de contraseña.
 - **Gestión de clientes**: alta, datos de salud, políticas, cancelación de membresía.
 - **Pagos**: registro y pagos pendientes.

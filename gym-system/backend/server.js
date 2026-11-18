@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import dotenv from "dotenv";
 
 import authRoutes from "./src/routes/auth.routes.js";
@@ -21,7 +22,8 @@ import perfilRoutes from "./src/routes/perfil.routes.js";
 import movimientosRoutes from "./src/routes/movimientos.routes.js";
 
 const app = express();
-app.use(cors());
+app.use(compression({ threshold: 1024 })); // gzip para respuestas JSON grandes (listas, fotos)
+app.use(cors({ maxAge: 7200 })); // el navegador reutiliza el preflight OPTIONS 2 h en vez de repetirlo en cada llamada
 app.use(express.json({ limit: "15mb" })); // soporta comprobantes de transferencia y foto de registro de rostro
 
 // Rutas

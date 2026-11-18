@@ -1,10 +1,35 @@
-import { supabase, rpc, consulta, manejar, numero } from "../data/supabase.js";
+import { supabase, rpc, consulta, manejar, numero, errorHttp } from "../data/supabase.js";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const DIAS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]; // dia_semana 1..7 (ISO)
 
+// Conteo de activos/inactivos hecho en la base (vista resumen_clientes de sql/optimizacion_rendimiento.sql).
+// Antes se descargaban TODOS los clientes para contarlos en Node. Si la vista aún no existe, se usa lo anterior.
+let vistaResumenClientes = true;
+
 // Tarjetas del dashboard (vista resumen_dashboard, descontando perfiles eliminados por ARCO)
 export const resumenDashboard = manejar(async (req, res) => {
+  if (vistaResumenClientes) {
+    const [ingresos, conteo] = await Promise.all([
+      consulta(supabase.from("resumen_dashboard").select("ingresos_mes").limit(1)),
+      supabase.from("resumen_clientes").select("activos, inactivos").limit(1),
+    ]);
+    if (!conteo.error) {
+      const c = conteo.data?.[0] || {};
+      return res.json({
+        ok: true,
+        resumen: {
+          clientesActivos: numero(c.activos),
+          clientesInactivos: numero(c.inactivos),
+          ingresosMes: numero(ingresos?.[0]?.ingresos_mes),
+        },
+      });
+    }
+    if (!["42P01", "PGRST205"].includes(conteo.error.code)) throw errorHttp(500, conteo.error.message);
+    vistaResumenClientes = false;
+    console.warn("resumen_clientes no disponible; se cuenta en Node:", conteo.error.message);
+  }
+
   const [filas, clientes] = await Promise.all([
     consulta(supabase.from("resumen_dashboard").select("*").limit(1)),
     consulta(supabase.from("clientes_lista").select("gmail, nombre, activa, estado")),

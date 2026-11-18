@@ -3,12 +3,13 @@ import { Router } from "express";
 import { verificarToken, permitirRoles } from "../middleware/auth.js";
 import {
   listarPersonal, obtenerFotoPersonal, crearPersonal, actualizarPersonal, eliminarPersonal,
-  obtenerSaludPersonal, guardarFotoPersonal,
+  obtenerSaludPersonal, guardarFotoPersonal, obtenerFotosPersonal,
 } from "../controllers/personal.controller.js";
 
 const router = Router();
 router.use(verificarToken, permitirRoles("encargado", "dueno"));
 router.get("/", listarPersonal);
+router.get("/fotos", obtenerFotosPersonal); // fotos en lote ?ids=1,2,3 (antes de /:id)
 router.get("/:id/foto", obtenerFotoPersonal);
 router.put("/:id/foto", guardarFotoPersonal);
 router.get("/:id/salud", obtenerSaludPersonal);

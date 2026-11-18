@@ -44,9 +44,12 @@ const formVacio = {
 };
 
 
+// Filas que se pintan de golpe en la tabla (y fotos que se piden por lote)
+const POR_PAGINA = 50;
+
 export default function Clientes() {
   const { usuario } = useAuth();
-  const { tr, traducirMsg, traducirPlan } = useIdioma();
+  const { tr, traducirMsg, traducirPlan, esIngles } = useIdioma();
   const esEncargado = usuario?.rol === "encargado" || usuario?.rol === "dueno";
 
   const [clientes, setClientes] = useState([]);
@@ -56,6 +59,9 @@ export default function Clientes() {
   const [aviso, setAviso] = useState("");
   const [buscar, setBuscar] = useState("");
   const [estado, setEstado] = useState("");
+  const [buscarDiferido, setBuscarDiferido] = useState(""); // búsqueda que realmente se manda (300 ms después de teclear)
+  const [visibles, setVisibles] = useState(POR_PAGINA); // filas que se pintan; el resto con "Mostrar más"
+  const peticionRef = useRef(null);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState(null); // null = creando, id = editando
   const [form, setForm] = useState(formVacio);
@@ -102,9 +108,25 @@ export default function Clientes() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t) ? "" : tr.val.correoInvalido;
   };
 
+  // Espera 300 ms sin teclear antes de buscar (antes: 2 peticiones por cada tecla)
   useEffect(() => {
-    cargar();
-  }, [buscar, estado]);
+    const t = setTimeout(() => setBuscarDiferido(buscar.trim()), 300);
+    return () => clearTimeout(t);
+  }, [buscar]);
+
+  useEffect(() => {
+    cargarLista();
+    setVisibles(POR_PAGINA);
+  }, [buscarDiferido, estado]);
+
+  useEffect(() => {
+    cargarCancelaciones();
+  }, []);
+
+  // Solo se piden las fotos de las filas que se muestran, en una petición por lote
+  useEffect(() => {
+    cargarFotos(clientes.slice(0, visibles));
+  }, [clientes, visibles]);
 
   useEffect(() => {
     cargarPlanes();
@@ -125,28 +147,44 @@ export default function Clientes() {
       .catch(() => setPlanes([]));
   }
 
-  async function cargar() {
+  // Se conserva para las llamadas existentes (después de guardar, renovar, dar de baja, etc.)
+  function cargar() {
+    cargarLista();
+    cargarCancelaciones();
+  }
+
+  function cargarCancelaciones() {
     api
       .get("/clientes/cancelaciones-pendientes")
       .then(({ data }) => setCancelacionPendiente(new Set(data.ids)))
       .catch(() => {});
-    const { data } = await api.get("/clientes", { params: { buscar, estado } });
-    const lista = data.clientes || [];
-    setClientes(lista);
+  }
 
-    lista.forEach((c) => {
-      if (!fotosPedidasRef.current.has(c.id)) {
-        fotosPedidasRef.current.add(c.id);
-        api
-          .get(`/clientes/${c.id}/foto`)
-          .then(({ data: res }) => {
-            if (res?.foto) {
-              setFotos((prev) => ({ ...prev, [c.id]: res.foto }));
-            }
-          })
-          .catch(() => {});
+  async function cargarLista() {
+    peticionRef.current?.abort(); // descarta la respuesta de una búsqueda anterior que llegue tarde
+    const ctrl = new AbortController();
+    peticionRef.current = ctrl;
+    try {
+      const { data } = await api.get("/clientes", { params: { buscar: buscarDiferido, estado }, signal: ctrl.signal });
+      setClientes(data.clientes || []);
+    } catch (err) {
+      if (err.code !== "ERR_CANCELED") throw err;
+    }
+  }
+
+  // Fotos en lote: GET /clientes/fotos?ids=1,2,3 (antes: una petición por cliente y un re-render por foto)
+  async function cargarFotos(lista) {
+    const faltan = lista.map((c) => c.id).filter((id) => !fotosPedidasRef.current.has(id));
+    for (let i = 0; i < faltan.length; i += POR_PAGINA) {
+      const ids = faltan.slice(i, i + POR_PAGINA);
+      ids.forEach((id) => fotosPedidasRef.current.add(id));
+      try {
+        const { data } = await api.get("/clientes/fotos", { params: { ids: ids.join(",") } });
+        if (data?.fotos && Object.keys(data.fotos).length) setFotos((prev) => ({ ...prev, ...data.fotos }));
+      } catch {
+        ids.forEach((id) => fotosPedidasRef.current.delete(id)); // se reintenta en la siguiente carga
       }
-    });
+    }
   }
 
   // ---------- Rostro (reconocimiento facial) ----------
@@ -536,7 +574,14 @@ export default function Clientes() {
 
       {aviso && <p className="text-sm text-center text-[var(--c-ambar-texto)] mb-3">{aviso}</p>}
 
-      <Table columnas={columnas} filas={clientes} />
+      <Table columnas={columnas} filas={clientes.slice(0, visibles)} />
+      {clientes.length > visibles && (
+        <div className="mt-3 flex justify-center">
+          <Boton variante="outline" onClick={() => setVisibles((v) => v + POR_PAGINA)}>
+            {esIngles ? "Show more" : "Mostrar más"} ({clientes.length - visibles})
+          </Boton>
+        </div>
+      )}
 
       {/* Modal para Crear / Editar Cliente */}
       <Modal

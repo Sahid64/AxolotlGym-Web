@@ -3,7 +3,7 @@ import { verificarToken, permitirRoles } from "../middleware/auth.js";
 import {
   listarClientes, obtenerCliente, obtenerFotoCliente, crearCliente,
   actualizarCliente, renovarCliente, cambiarEstadoCliente, eliminarCliente, listarPlanes,
-  obtenerDetalleCliente, evaluarCancelacion, solicitarCancelacion, cancelacionesPendientes,
+  obtenerDetalleCliente, evaluarCancelacion, solicitarCancelacion, cancelacionesPendientes, obtenerFotosClientes,
 } from "../controllers/clientes.controller.js";
 import { clientesConRostro, registrarRostro } from "../controllers/acceso.controller.js";
 
@@ -11,6 +11,7 @@ const router = Router();
 router.use(verificarToken, permitirRoles("recepcion", "encargado", "dueno"));
 router.get("/", listarClientes);
 router.get("/planes", listarPlanes); // antes de /:id para que no lo tome como id
+router.get("/fotos", obtenerFotosClientes); // fotos en lote ?ids=1,2,3 (antes de /:id)
 router.get("/rostros", clientesConRostro); // ids con rostro registrado (tambien antes de /:id)
 router.get("/cancelaciones-pendientes", cancelacionesPendientes); // ids con cancelación por autorizar
 router.get("/:id/detalle", obtenerDetalleCliente); // contacto de emergencia y datos de salud

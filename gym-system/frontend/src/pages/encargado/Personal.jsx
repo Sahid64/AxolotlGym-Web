@@ -141,19 +141,18 @@ export default function Personal() {
     const lista = data.personal || [];
     setPersonal(lista);
 
-    lista.forEach((p) => {
-      if (!fotosPedidasRef.current.has(p.id)) {
-        fotosPedidasRef.current.add(p.id);
-        api
-          .get(`/personal/${p.id}/foto`)
-          .then(({ data: res }) => {
-            if (res?.foto) {
-              setFotos((prev) => ({ ...prev, [p.id]: res.foto }));
-            }
-          })
-          .catch(() => {});
+    // Fotos en lote: GET /personal/fotos?ids=1,2,3 (antes: una petición por persona)
+    const faltan = [...new Set(lista.map((p) => p.id))].filter((id) => !fotosPedidasRef.current.has(id));
+    for (let i = 0; i < faltan.length; i += 50) {
+      const ids = faltan.slice(i, i + 50);
+      ids.forEach((id) => fotosPedidasRef.current.add(id));
+      try {
+        const { data: res } = await api.get("/personal/fotos", { params: { ids: ids.join(",") } });
+        if (res?.fotos && Object.keys(res.fotos).length) setFotos((prev) => ({ ...prev, ...res.fotos }));
+      } catch {
+        ids.forEach((id) => fotosPedidasRef.current.delete(id));
       }
-    });
+    }
   }
 
   // Actualiza un campo (limpiando lo inválido) y quita su error

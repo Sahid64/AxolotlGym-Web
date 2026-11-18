@@ -1,33 +1,40 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
-import Login from "../pages/Login.jsx";
+// La página de inicio va en el bundle principal (es la de entrada).
+// Las demás se cargan por ruta: cada sección baja su propio JS solo cuando se visita
+// (Recharts, por ejemplo, solo se descarga al abrir el Dashboard).
 import Inicio from "../pages/Inicio.jsx";
-import Terminos from "../pages/Terminos.jsx";
-import Privacidad from "../pages/Privacidad.jsx";
-
 import RutaProtegida from "../components/layout/RutaProtegida.jsx";
 
+const Login = lazy(() => import("../pages/Login.jsx"));
+const Terminos = lazy(() => import("../pages/Terminos.jsx"));
+const Privacidad = lazy(() => import("../pages/Privacidad.jsx"));
+
 // Recepcion
-import AccesoFacial from "../pages/recepcion/AccesoFacial.jsx"; // toma de lista con reconocimiento facial
-import Clientes from "../pages/recepcion/Clientes.jsx";
-import Solicitudes from "../pages/recepcion/Solicitudes.jsx";
-import PagosRecepcion from "../pages/recepcion/Pagos.jsx";
+const AccesoFacial = lazy(() => import("../pages/recepcion/AccesoFacial.jsx")); // toma de lista con reconocimiento facial
+const Clientes = lazy(() => import("../pages/recepcion/Clientes.jsx"));
+const Solicitudes = lazy(() => import("../pages/recepcion/Solicitudes.jsx"));
+const PagosRecepcion = lazy(() => import("../pages/recepcion/Pagos.jsx"));
 
 // Encargado / Dueño
-import Dashboard from "../pages/encargado/Dashboard.jsx";
-import Personal from "../pages/encargado/Personal.jsx"; // recepcion, instructores, encargados
-import Servicios from "../pages/encargado/Servicios.jsx";
-import Gastos from "../pages/encargado/Gastos.jsx";
-import Reportes from "../pages/encargado/Reportes.jsx";
-import PagosEncargado from "../pages/encargado/Pagos.jsx";
-import Avisos from "../pages/encargado/Avisos.jsx"; // comunicados por correo
+const Dashboard = lazy(() => import("../pages/encargado/Dashboard.jsx"));
+const Personal = lazy(() => import("../pages/encargado/Personal.jsx")); // recepcion, instructores, encargados
+const Servicios = lazy(() => import("../pages/encargado/Servicios.jsx"));
+const Gastos = lazy(() => import("../pages/encargado/Gastos.jsx"));
+const Reportes = lazy(() => import("../pages/encargado/Reportes.jsx"));
+const PagosEncargado = lazy(() => import("../pages/encargado/Pagos.jsx"));
+const Avisos = lazy(() => import("../pages/encargado/Avisos.jsx")); // comunicados por correo
+const Movimientos = lazy(() => import("../pages/encargado/Movimientos.jsx")); // bitácora de movimientos por rol
 
 // Compartidas por Recepcion y Encargado (igual que la app)
-import Visitas from "../pages/compartidas/Visitas.jsx"; // pase de un dia
-import Perfil from "../pages/compartidas/Perfil.jsx";
+const Visitas = lazy(() => import("../pages/compartidas/Visitas.jsx")); // pase de un dia
+const Perfil = lazy(() => import("../pages/compartidas/Perfil.jsx"));
 
 export default function AppRoutes() {
   return (
+    // Las secciones protegidas tienen su propio Suspense dentro de Shell (la barra lateral no parpadea)
+    <Suspense fallback={null}>
     <Routes>
       {/* Página publicitaria */}
       <Route path="/" element={<Inicio />} />
@@ -175,6 +182,15 @@ export default function AppRoutes() {
       />
 
       <Route
+        path="/encargado/movimientos"
+        element={
+          <RutaProtegida rolesPermitidos={["encargado", "dueno"]}>
+            <Movimientos />
+          </RutaProtegida>
+        }
+      />
+
+      <Route
         path="/encargado/perfil"
         element={
           <RutaProtegida rolesPermitidos={["encargado", "dueno"]}>
@@ -186,5 +202,6 @@ export default function AppRoutes() {
       {/* Rutas no encontradas */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }

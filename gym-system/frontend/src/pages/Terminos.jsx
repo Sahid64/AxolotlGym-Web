@@ -295,7 +295,7 @@ export default function Terminos() {
         <div className="fx-cristal rounded-[calc(1rem-1.5px)] p-6 sm:p-8">
           <div className="flex flex-col items-center text-center mb-4">
             <img
-              src="/logo_final.png"
+              src="/logo_final.webp"
               alt="Axolotl"
               className="w-16 h-16 object-contain"
               style={{ filter: "drop-shadow(0 0 18px var(--c-acento-60))" }}
